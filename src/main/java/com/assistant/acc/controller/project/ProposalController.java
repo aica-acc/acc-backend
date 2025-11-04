@@ -1,4 +1,4 @@
-package com.assistant.acc.controller.festival;
+package com.assistant.acc.controller.project;
 
 import org.springframework.web.bind.annotation.RestController;
 
@@ -7,6 +7,6 @@ import org.springframework.web.bind.annotation.RestController;
  * 작성 된 컨트롤러
  */
 @RestController
-public class FestivalInfoController {
+public class ProposalController {
     
 }
