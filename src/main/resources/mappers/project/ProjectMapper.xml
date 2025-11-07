@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.assistant.acc.mapper.project.ProjectMapper">
+
+    <insert id="insertProject" parameterType="com.assistant.acc.domain.project.Project"
+            useGeneratedKeys="true" keyProperty="pNo" keyColumn="p_no">
+        INSERT INTO project (m_no, create_at)
+        VALUES (#{memberNo}, SYSDATE())
+    </insert>
+
+    <insert id="insertInitialUserInput" parameterType="com.assistant.acc.domain.project.UserInput">
+        INSERT INTO user_input (
+            p_no,
+            theme,
+            keywords,
+            ui_title )
+        VALUES (
+                   #{projectNo},
+                   #{theme},
+                   #{keywords},
+                   #{title}
+               )
+    </insert>
+
+    <update id="updateAnalysisResults" parameterType="com.assistant.acc.domain.project.UserInput">
+        UPDATE user_input
+        SET
+            analysis_summary_json = #{analysisSummary},
+            poster_trend_report_json = #{posterTrendReport},
+            strategy_report_json = #{strategyReport}
+        WHERE
+            p_no = #{projectNo}
+    </update>
+
+</mapper>
