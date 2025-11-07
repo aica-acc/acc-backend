@@ -15,6 +15,6 @@ public interface ProjectMapper {
     // 2. 사용자의 초기 입력을 저장
     void insertInitialUserInput(UserInput userInput);
     // 3. AI 분석 완료 후, JSON 결과들을 업데이트
-    void updateAnalysissResults(UserInput userInput);
+    void insertAnalysissResults(UserInput userInput);
     
 }

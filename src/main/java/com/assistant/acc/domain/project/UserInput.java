@@ -11,7 +11,7 @@ public class UserInput {
     // --- 1단계 (초기 입력) ---
     private String theme;
     private String keywords;
-    private String title;
+    private String pName;
 
     // --- 1단계 (분석 결과 JSON) ---
     private String analysisSummary;

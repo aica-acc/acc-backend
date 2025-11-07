@@ -62,7 +62,7 @@ public class PosterService {
         initialInput.setProjectNo(newPNo);
         initialInput.setTheme(theme);
         initialInput.setKeywords(keywords);
-        initialInput.setTitle(title);
+        initialInput.setPName(title);
 
         projectMapper.insertInitialUserInput(initialInput);
         System.out.println("Java - DB: 사용자 초기 입력 저장 완료.");
@@ -111,7 +111,7 @@ public class PosterService {
             resultInput.setPosterTrendReport(trendReportJson);
             resultInput.setStrategyReport(strategyReportJson);
 
-            projectMapper.updateAnalysissResults(resultInput);
+            projectMapper.insertAnalysissResults(resultInput);
             System.out.println("Java - DB: Python 분석 결과 업데이트 완료.");
         } else {
             // Python 서버가 'status: error'를 반환한 경우
