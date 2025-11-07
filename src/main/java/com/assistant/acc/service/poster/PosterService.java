@@ -49,10 +49,10 @@ public class PosterService {
         String currentMemberId = "M0000001"; // (임시 하드코딩 - '테이블설계.csv'의 관리자 ID)
 
         Project newProject = new Project();
-        newProject.setMNo(currentMemberId);
+        newProject.setMemberNo(currentMemberId);
 
         projectMapper.insertProject(newProject); // 이 호출 후 newProject.getPNo()에 PK값이 채워짐
-        Integer newPNo = newProject.getPNo();
+        Integer newPNo = newProject.getProjectNo();
         System.out.println("Java - DB: 새 프로젝트 생성 완료 (p_no: " + newPNo + ")");
 
         // =======================================================
