@@ -1,37 +1,75 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTO Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.assistant.acc.mapper.project.ProjectMapper">
 
-    <insert id="insertProject" parameterType="com.assistant.acc.domain.project.Project"
-            useGeneratedKeys="true" keyProperty="pNo" keyColumn="p_no">
+    <insert id="insertProject"
+            parameterType="com.assistant.acc.domain.project.Project"
+            useGeneratedKeys="true"
+            keyColumn="p_no"
+            keyProperty="projectNo">
+
         INSERT INTO project (m_no, create_at)
-        VALUES (#{memberNo}, SYSDATE())
-    </insert>
-
-    <insert id="insertInitialUserInput" parameterType="com.assistant.acc.domain.project.UserInput">
-        INSERT INTO user_input (
-            p_no,
-            theme,
-            keywords,
-            ui_title )
         VALUES (
-                   #{projectNo},
-                   #{theme},
-                   #{keywords},
-                   #{title}
+                #{memberNo},
+                SYSDATE()
                )
+
     </insert>
 
-    <update id="updateAnalysisResults" parameterType="com.assistant.acc.domain.project.UserInput">
-        UPDATE user_input
-        SET
-            analysis_summary_json = #{analysisSummary},
-            poster_trend_report_json = #{posterTrendReport},
-            strategy_report_json = #{strategyReport}
-        WHERE
-            p_no = #{projectNo}
-    </update>
+    <insert id="insertInitialUserInput"
+            parameterType="com.assistant.acc.domain.project.UserInput">
 
+        INSERT INTO user_input (p_no, theme, keywords, p_name)
+        VALUES (
+                #{projectNo},
+                #{theme},
+                #{keywords},
+                #{pName}
+               )
+
+    </insert>
+
+    <insert id="insertProposalMetadata"
+            parameterType="com.assistant.acc.domain.project.ProposalMetadata">
+
+        INSERT INTO proposal_metadata (
+            proposal_meatadata_no,
+            p_no,
+            title,
+            festival_start_date,
+            festival_end_date,
+            location,
+            host,
+            organizer,
+            target,
+            contactInfo,
+            directions,
+            program_name,
+            event_name,
+            visual_keywords,
+            concept_description,
+            create_at,
+        )
+        VALUES (
+                #{proposalMetadataNo},
+                #{projectNo},
+                #{title},
+                #{festivalStartDate},
+                #{festivalEndDate},
+                #{location},
+                #{host},
+                #{organizer},
+                #{target},
+                #{contactInfo},
+                #{directions},
+                #{programName},
+                #{eventName},
+                #{visualKeywords},
+                #{conceptDescription},
+                SYSDATE()
+               )
+
+    </insert>
 </mapper>
