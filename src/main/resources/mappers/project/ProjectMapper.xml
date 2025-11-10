@@ -4,34 +4,62 @@
 
 <mapper namespace="com.assistant.acc.mapper.project.ProjectMapper">
 
-    <insert id="insertProject" parameterType="com.assistant.acc.domain.project.Project"
-            useGeneratedKeys="true" keyProperty="pNo" keyColumn="p_no">
+    <insert id="insertProject"
+            parameterType="com.assistant.acc.domain.project.Project"
+            useGeneratedKeys="true"
+            keyColumn="p_no"
+            keyProperty="projectNo">
+
         INSERT INTO project (m_no, create_at)
-        VALUES (#{memberNo}, SYSDATE())
+        VALUES (
+                   #{memberNo},
+                   SYSDATE()
+               )
     </insert>
 
-    <insert id="insertInitialUserInput" parameterType="com.assistant.acc.domain.project.UserInput">
-        INSERT INTO user_input (
-            p_no,
-            theme,
-            keywords,
-            ui_title )
+    <insert id="insertInitialUserInput"
+            parameterType="com.assistant.acc.domain.project.UserInput">
+
+        INSERT INTO user_input (p_no, theme, keywords, p_name)
         VALUES (
                    #{projectNo},
                    #{theme},
                    #{keywords},
-                   #{title}
+                   #{pName}
                )
     </insert>
 
-    <update id="updateAnalysisResults" parameterType="com.assistant.acc.domain.project.UserInput">
-        UPDATE user_input
-        SET
-            analysis_summary_json = #{analysisSummary},
-            poster_trend_report_json = #{posterTrendReport},
-            strategy_report_json = #{strategyReport}
-        WHERE
-            p_no = #{projectNo}
-    </update>
+    <insert id="insertProposalMetadata" parameterType="com.assistant.acc.domain.project.ProposalMetadata">
+
+        INSERT INTO proposal_metadata ( p_no,
+                                        title,
+                                        festival_start_date,
+                                        festival_end_date,
+                                        location,
+                                        host,
+                                        organizer,
+                                        target,
+                                        contactInfo, directions,
+                                        program_name,
+                                        event_name,
+                                        visual_keywords,
+                                        concept_description,
+                                        create_at  )
+        VALUES (
+                   #{projectNo},
+                   #{title},
+                   #{festivalStartDate},
+                   #{festivalEndDate},
+                   #{location},
+                   #{host},
+                   #{organizer},
+                   #{target},
+                   #{contactInfo},
+                   #{directions},
+                   #{programName},
+                   #{eventName}, #{visualKeywords},
+                   #{conceptDescription},
+                   SYSDATE()  )
+    </insert>
 
 </mapper>
