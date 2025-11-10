@@ -1,12 +1,15 @@
 package com.assistant.acc.service.poster;
 
-import java.io.IOException;
-
+import com.assistant.acc.domain.project.Project;
+import com.assistant.acc.domain.project.ProposalMetadata;
+import com.assistant.acc.domain.project.UserInput;
+import com.assistant.acc.dto.poster.PosterAnalysisResponse;
+import com.assistant.acc.dto.poster.PosterSummary;
+import com.assistant.acc.dto.poster.PosterStrategy;
+import com.assistant.acc.mapper.project.ProjectMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.core.io.ByteArrayResource;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
@@ -14,113 +17,152 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.assistant.acc.domain.project.Project;
-import com.assistant.acc.domain.project.UserInput;
-import com.assistant.acc.mapper.project.ProjectMapper;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
 @Service
 public class PosterService {
 
     private final RestTemplate restTemplate;
-    private final ObjectMapper objectMapper; 
-    private final ProjectMapper projectMapper; 
+    private final ObjectMapper objectMapper;
+    private final ProjectMapper projectMapper;
 
-    private final String PYTHON_API_URL = "http://localhost:5000";
+    private static final String PYTHON_API_URL = "http://localhost:5000";
 
-    // 생성자 수정
     public PosterService(RestTemplate restTemplate, ObjectMapper objectMapper, ProjectMapper projectMapper) {
         this.restTemplate = restTemplate;
         this.objectMapper = objectMapper;
         this.projectMapper = projectMapper;
     }
 
-    /**
-     * Python /analyze API를 호출하고, 전후 과정을 DB에 기록합니다.
-     */
     @Transactional
     public String analyze(MultipartFile file, String theme, String keywords, String title) throws IOException {
 
-        // =======================================================
-        // 1: DB - 새 프로젝트 생성
-        // =======================================================
-        // TODO: (추후) Spring Security에서 실제 로그인된 사용자 m_no 가져오기
-        String currentMemberId = "M0000001"; // (임시 하드코딩 - '테이블설계.csv'의 관리자 ID)
+        System.out.println("분석 시작 (서비스)");
 
+        // 1️⃣ 새 프로젝트 생성
+        String currentMemberId = "M0000001"; // 임시 하드코딩
         Project newProject = new Project();
         newProject.setMemberNo(currentMemberId);
-
-        projectMapper.insertProject(newProject); // 이 호출 후 newProject.getPNo()에 PK값이 채워짐
+        projectMapper.insertProject(newProject);
         Integer newPNo = newProject.getProjectNo();
-        System.out.println("Java - DB: 새 프로젝트 생성 완료 (p_no: " + newPNo + ")");
 
-        // =======================================================
-        // 2: DB - 사용자 초기 입력 저장
-        // =======================================================
-        UserInput initialInput = new UserInput();
-        initialInput.setProjectNo(newPNo);
-        initialInput.setTheme(theme);
-        initialInput.setKeywords(keywords);
-        initialInput.setPName(title);
+        System.out.println("새 프로젝트 생성 완료 (p_no: " + newPNo + ")");
 
-        projectMapper.insertInitialUserInput(initialInput);
-        System.out.println("Java - DB: 사용자 초기 입력 저장 완료.");
+        // 2️⃣ 사용자 초기 입력 저장
+        UserInput input = new UserInput();
+        input.setProjectNo(newPNo);
+        input.setTheme(theme);
+        input.setKeywords(keywords);
+        input.setPName(title);
+        projectMapper.insertInitialUserInput(input);
 
-        // =======================================================
-        // 3: Python - AI 서버 호출
-        // =======================================================
+        System.out.println("사용자 초기 입력 저장 완료.");
+
+        // 3️⃣ Python 서버 호출
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
         body.add("theme", theme);
         body.add("keywords", keywords);
         body.add("title", title);
-        ByteArrayResource fileResource = new ByteArrayResource(file.getBytes()) {
+        body.add("file", new ByteArrayResource(file.getBytes()) {
             @Override
             public String getFilename() {
                 return file.getOriginalFilename();
             }
-        };
-        body.add("file", fileResource);
+        });
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
         HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
 
-        System.out.println("Java -> Python (" + PYTHON_API_URL + "/analyze) API 호출 시작...");
+        System.out.println("Java → Python API 호출 시작...");
         ResponseEntity<String> response = restTemplate.postForEntity(
-                PYTHON_API_URL + "/analyze",
+                PYTHON_API_URL + "/poster/analyze",
                 requestEntity,
                 String.class
         );
-        String pythonResponse = response.getBody();
-        System.out.println("Java <- Python 통신 완료.");
 
-        // =======================================================
-        // 4: DB - Python 결과 파싱 및 DB 업데이트
-        // =======================================================
-        JsonNode root = objectMapper.readTree(pythonResponse);
+        // 4️⃣ 응답 DTO 매핑 (JsonNode → DTO 자동 변환)
+        PosterAnalysisResponse parsed = objectMapper.readValue(response.getBody(), PosterAnalysisResponse.class);
 
-        if (root.path("status").asText().equals("success")) {
-            String analysisSummaryJson = root.path("analysis_summary").toString();
-            String trendReportJson = root.path("poster_trend_report").toString();
-            String strategyReportJson = root.path("strategy_report").toString();
-
-            UserInput resultInput = new UserInput();
-            resultInput.setProjectNo(newPNo); // 동일한 p_no로 지정
-            resultInput.setAnalysisSummary(analysisSummaryJson);
-            resultInput.setPosterTrendReport(trendReportJson);
-            resultInput.setStrategyReport(strategyReportJson);
-
-            projectMapper.insertAnalysissResults(resultInput);
-            System.out.println("Java - DB: Python 분석 결과 업데이트 완료.");
-        } else {
-            // Python 서버가 'status: error'를 반환한 경우
-            throw new IOException("Python AI 서버가 분석에 실패했습니다: " + root.path("message").asText());
+        if (!"success".equals(parsed.getStatus())) {
+            throw new IOException("AI 분석 실패: " + parsed.getMessage());
         }
 
-        // =======================================================
-        //  5: React - 최종 결과 반환
-        // =======================================================
-        return pythonResponse;
+        // 5️⃣ DTO 변환 및 DB 저장
+        PosterSummary summary = parsed.getAnalysis_summary();
+        PosterStrategy strategy = parsed.getStrategy_report();
+
+        ProposalMetadata metadata = convertToMetadata(summary, strategy, newPNo);
+        projectMapper.insertProposalMetadata(metadata);
+
+        System.out.println("Python 분석 결과 DB 저장 완료.");
+        return response.getBody();
+    }
+
+    /**
+     * PosterSummary + PosterStrategy → ProposalMetadata 변환
+     */
+    private ProposalMetadata convertToMetadata(PosterSummary summary, PosterStrategy strategy, Integer projectNo) {
+        ProposalMetadata metadata = new ProposalMetadata();
+        metadata.setProjectNo(projectNo);
+
+        metadata.setTitle(summary.getTitle());
+        metadata.setLocation(summary.getLocation());
+        metadata.setHost(summary.getHost());
+        metadata.setOrganizer(summary.getOrganizer());
+        metadata.setTarget(summary.getTargetAudience());
+        metadata.setContactInfo(summary.getContactInfo());
+        metadata.setDirections(summary.getDirections());
+
+        List<Date> parsedDates = parseDateRange(summary.getDate());
+        metadata.setFestivalStartDate(parsedDates.get(0));
+        metadata.setFestivalEndDate(parsedDates.get(1));
+
+        metadata.setProgramName(summary.getPrograms() != null ? summary.getPrograms().toString() : "[]");
+        metadata.setEventName(summary.getEvents() != null ? summary.getEvents().toString() : "[]");
+        metadata.setVisualKeywords(summary.getVisualKeywords() != null ? summary.getVisualKeywords().toString() : "[]");
+
+        metadata.setConceptDescription(strategy.getStrategy_text());
+        metadata.setCreateAt(new Date());
+
+        return metadata;
+    }
+
+    /**
+     * 날짜 파싱 유틸
+     */
+    private List<Date> parseDateRange(String rawDateText) {
+        List<Date> resultDates = new ArrayList<>();
+        Date parsedStartDate = null;
+        Date parsedEndDate = null;
+
+        try {
+            SimpleDateFormat formatter = new SimpleDateFormat("yyyy. MM. dd");
+            String[] dates = rawDateText.split("~");
+            String startDateString = dates[0].replaceAll("\\(.*?\\)", "").trim();
+            parsedStartDate = formatter.parse(startDateString);
+
+            if (dates.length > 1) {
+                String endDateString = dates[1].replaceAll("\\(.*?\\)", "").trim();
+                if (endDateString.indexOf('.') == endDateString.lastIndexOf('.')) {
+                    String year = startDateString.substring(0, 4);
+                    endDateString = year + ". " + endDateString;
+                }
+                parsedEndDate = formatter.parse(endDateString);
+            } else {
+                parsedEndDate = parsedStartDate;
+            }
+
+        } catch (ParseException e) {
+            System.err.println("날짜 파싱 실패: " + rawDateText + " | " + e.getMessage());
+        }
+
+        resultDates.add(parsedStartDate);
+        resultDates.add(parsedEndDate != null ? parsedEndDate : parsedStartDate);
+        return resultDates;
     }
 }

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTO Mapper 3.0//EN"
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.assistant.acc.mapper.project.ProjectMapper">
@@ -12,10 +12,9 @@
 
         INSERT INTO project (m_no, create_at)
         VALUES (
-                #{memberNo},
-                SYSDATE()
+                   #{memberNo},
+                   SYSDATE()
                )
-
     </insert>
 
     <insert id="insertInitialUserInput"
@@ -23,53 +22,44 @@
 
         INSERT INTO user_input (p_no, theme, keywords, p_name)
         VALUES (
-                #{projectNo},
-                #{theme},
-                #{keywords},
-                #{pName}
+                   #{projectNo},
+                   #{theme},
+                   #{keywords},
+                   #{pName}
                )
-
     </insert>
 
-    <insert id="insertProposalMetadata"
-            parameterType="com.assistant.acc.domain.project.ProposalMetadata">
+    <insert id="insertProposalMetadata" parameterType="com.assistant.acc.domain.project.ProposalMetadata">
 
-        INSERT INTO proposal_metadata (
-            proposal_meatadata_no,
-            p_no,
-            title,
-            festival_start_date,
-            festival_end_date,
-            location,
-            host,
-            organizer,
-            target,
-            contactInfo,
-            directions,
-            program_name,
-            event_name,
-            visual_keywords,
-            concept_description,
-            create_at,
-        )
+        INSERT INTO proposal_metadata ( p_no,
+                                        title,
+                                        festival_start_date,
+                                        festival_end_date,
+                                        location,
+                                        host,
+                                        organizer,
+                                        target,
+                                        contactInfo, directions,
+                                        program_name,
+                                        event_name,
+                                        visual_keywords,
+                                        concept_description,
+                                        create_at  )
         VALUES (
-                #{proposalMetadataNo},
-                #{projectNo},
-                #{title},
-                #{festivalStartDate},
-                #{festivalEndDate},
-                #{location},
-                #{host},
-                #{organizer},
-                #{target},
-                #{contactInfo},
-                #{directions},
-                #{programName},
-                #{eventName},
-                #{visualKeywords},
-                #{conceptDescription},
-                SYSDATE()
-               )
-
+                   #{projectNo},
+                   #{title},
+                   #{festivalStartDate},
+                   #{festivalEndDate},
+                   #{location},
+                   #{host},
+                   #{organizer},
+                   #{target},
+                   #{contactInfo},
+                   #{directions},
+                   #{programName},
+                   #{eventName}, #{visualKeywords},
+                   #{conceptDescription},
+                   SYSDATE()  )
     </insert>
+
 </mapper>
