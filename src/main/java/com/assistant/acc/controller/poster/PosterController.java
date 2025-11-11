@@ -2,12 +2,11 @@ package com.assistant.acc.controller.poster;
 
 import java.io.IOException; // ⭐️ 서비스 import
 
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping; // ⭐️ IO 예외 import
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.assistant.acc.service.poster.PosterService;
@@ -47,6 +46,47 @@ public class PosterController {
         } catch (Exception e) {
             // (그 외 예상치 못한 서버 오류)
             return ResponseEntity.status(502).body("{\"status\": \"error\", \"message\": \"기타 서버 통신 실패: " + e.getMessage() + "\"}");
+        }
+    }
+    /**
+     * 2단계 API: AI 프롬프트 생성 요청 (JSON Proxy)
+     * Postman/프론트엔드에서 JSON을 받아 PosterService로 전달합니다.
+     */
+    @PostMapping("/generate-prompt")
+    public ResponseEntity<String> generatePrompt(@RequestBody String jsonBody) {
+        try {
+            // 서비스의 2단계 메소드 호출
+            String aiResponse = posterService.generatePrompt(jsonBody);
+
+            // Python이 보낸 JSON을 그대로 반환 (Content-Type을 JSON으로 설정)
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            return new ResponseEntity<>(aiResponse, headers, HttpStatus.OK);
+        } catch (Exception e) {
+            // 오류처리
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("{\"status\": \"error\", \"message\": \"" + e.getMessage() + "\"}");
+        }
+    }
+    /**
+     * 3단계 API: 최종 홍보물 생성 요청 (JSON Proxy)
+     * Postman/프론트엔드에서 JSON을 받아 PosterService로 전달합니다.
+     */
+    @PostMapping("/create-image")
+    public ResponseEntity<String> createImage(@RequestBody String jsonBody) {
+        try{
+            // 서비스의 3단계 메소드 호출
+            String aiResponse = posterService.createImage(jsonBody);
+
+            // Python이 보낸 JSON을 그대로 반환
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            return new ResponseEntity<>(aiResponse, headers, HttpStatus.OK);
+
+        } catch (Exception e) {
+            // (오류 처리는 analyze 메소드와 동일하게 구성)
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("{\"status\": \"error\", \"message\": \"" + e.getMessage() + "\"}");
         }
     }
 }

@@ -22,5 +22,27 @@ public interface PosterService {
      * @throws IOException AI 서버 통신 또는 파일 처리 중 예외 발생 시
      */
     String analyze(MultipartFile file, String theme, String keywords, String title) throws IOException;
+    /**
+     * 2단계: AI 프롬프트 생성을 Python 서버에 요청
+     * (JSON을 받아 JSON으로 반환한다)
+     *
+     * @param jsonBody 1단계 분석 결과가 담긴 원본 JSON 문자열
+     * @return AI 서버가 반환한 프롬프트 시안(JSON 문자열)
+     * @throws IOException
+     */
+
+    String generatePrompt(String jsonBody) throws IOException;
+
+    /**
+     * 3단계: 최종 홍보물 생성을 Python 서버에 요청.
+     * (JSON을 받아 JSON으로 반환한다)
+     *
+     * @param jsonBody 1단계 분석 결과 + 2단계 선택 시안이 담긴 JSON
+     * @return AI 서버가 반환한 최종 결과물(이미지 URL 등 JSON)
+     * @throws IOException
+     */
+
+    String createImage(String jsonBody) throws IOException;
+
 
 }
