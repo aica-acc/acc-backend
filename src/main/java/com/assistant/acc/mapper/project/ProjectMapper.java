@@ -1,8 +1,10 @@
 package com.assistant.acc.mapper.project;
 
 import com.assistant.acc.domain.project.Project;
+import com.assistant.acc.domain.project.ProposalMetadata;
 import com.assistant.acc.domain.project.UserInput;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 /**
  * DB에 저장 된 축제 정보를 가져오는 계층
@@ -15,6 +17,11 @@ public interface ProjectMapper {
     // 2. 사용자의 초기 입력을 저장
     void insertInitialUserInput(UserInput userInput);
     // 3. AI 분석 완료 후, JSON 결과들을 업데이트
-    void updateAnalysissResults(UserInput userInput);
+    void insertProposalMetadata(ProposalMetadata metadata);
+    // 1) 최신 p_no 조회
+    Integer selectLatestProjectNo(@Param("m_no") String m_no);
+    // 2) p_no 기준 기획서 메타데이터 조회
+    ProposalMetadata selectProposalMetadata(@Param("p_no") Integer p_no);
     
 }
+

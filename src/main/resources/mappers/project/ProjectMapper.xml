@@ -4,34 +4,95 @@
 
 <mapper namespace="com.assistant.acc.mapper.project.ProjectMapper">
 
-    <insert id="insertProject" parameterType="com.assistant.acc.domain.project.Project"
-            useGeneratedKeys="true" keyProperty="pNo" keyColumn="p_no">
+    <insert id="insertProject"
+            parameterType="com.assistant.acc.domain.project.Project"
+            useGeneratedKeys="true"
+            keyColumn="p_no"
+            keyProperty="projectNo">
+
         INSERT INTO project (m_no, create_at)
-        VALUES (#{memberNo}, SYSDATE())
+        VALUES (
+                   #{memberNo},
+                   SYSDATE()
+               )
     </insert>
 
-    <insert id="insertInitialUserInput" parameterType="com.assistant.acc.domain.project.UserInput">
-        INSERT INTO user_input (
-            p_no,
-            theme,
-            keywords,
-            ui_title )
+    <insert id="insertInitialUserInput"
+            parameterType="com.assistant.acc.domain.project.UserInput">
+
+        INSERT INTO user_input (p_no, theme, keywords, p_name)
         VALUES (
                    #{projectNo},
                    #{theme},
                    #{keywords},
-                   #{title}
+                   #{pName}
                )
     </insert>
 
-    <update id="updateAnalysisResults" parameterType="com.assistant.acc.domain.project.UserInput">
-        UPDATE user_input
-        SET
-            analysis_summary_json = #{analysisSummary},
-            poster_trend_report_json = #{posterTrendReport},
-            strategy_report_json = #{strategyReport}
-        WHERE
-            p_no = #{projectNo}
-    </update>
+    <insert id="insertProposalMetadata" parameterType="com.assistant.acc.domain.project.ProposalMetadata">
 
+        INSERT INTO proposal_metadata ( p_no,
+                                        title,
+                                        festival_start_date,
+                                        festival_end_date,
+                                        location,
+                                        host,
+                                        organizer,
+                                        target,
+                                        contactInfo, directions,
+                                        program_name,
+                                        event_name,
+                                        visual_keywords,
+                                        concept_description,
+                                        create_at  )
+        VALUES (
+                   #{projectNo},
+                   #{title},
+                   #{festivalStartDate},
+                   #{festivalEndDate},
+                   #{location},
+                   #{host},
+                   #{organizer},
+                   #{target},
+                   #{contactInfo},
+                   #{directions},
+                   #{programName},
+                   #{eventName}, #{visualKeywords},
+                   #{conceptDescription},
+                   SYSDATE()  )
+    </insert>
+      
+    <!-- 3) 최신 프로젝트 번호 -->
+    <select id="selectLatestProjectNo" resultType="int">
+        SELECT p_no
+        FROM project
+        WHERE m_no = #{m_no}
+        ORDER BY create_at DESC
+        LIMIT 1
+    </select>
+
+    <!-- 4) 기획서 메타데이터 조회 -->
+    <select id="selectProposalMetadata" parameterType="int" resultType="com.assistant.acc.domain.project.ProposalMetadata">
+        SELECT
+        proposal_metadata_no AS proposalMetadataNo,
+        p_no AS projectNo,
+        title,
+        festival_start_date AS festivalStartDate,
+        festival_end_date AS festivalEndDate,
+        location,
+        host,
+        organizer,
+        target,
+        contactInfo,
+        directions,
+        program_name AS programName,
+        event_name AS eventName,
+        visual_keywords AS visualKeywords,
+        concept_description AS conceptDescription,
+        create_at AS createAt
+        FROM proposal_metadata
+        WHERE p_no = #{p_no}
+        ORDER BY create_at DESC
+        LIMIT 1;
+    </select>
 </mapper>

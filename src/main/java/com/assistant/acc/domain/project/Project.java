@@ -15,24 +15,4 @@ public class Project {
     private String memberNo;
     private Date createAt;
 
-//    //getter & setter 정리
-//    public Integer getPNo() {
-//        return projectNo;
-//    }
-//    public void setPNo(Integer pNo) {
-//        this.projectNo = pNo;
-//    }
-//    public String getMNo() {
-//        return memberNo;
-//    }
-//    public void setMNo(String mNo) {
-//        this.memberNo = mNo;
-//    }
-//    public Date getCreateAt() {
-//        return createAt;
-//    }
-//    public void setCreateAt(Date createAt) {
-//        this.createAt = createAt;
-//    }
-    
 }
