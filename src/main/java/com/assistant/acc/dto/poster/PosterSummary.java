@@ -9,7 +9,6 @@ import java.util.List;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class PosterSummary {
 
-
     private String title;
     private String location;
     private String host;
