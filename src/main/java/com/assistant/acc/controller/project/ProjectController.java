@@ -1,6 +1,9 @@
 package com.assistant.acc.controller.project;
 
+import com.assistant.acc.domain.project.ProposalMetadata;
 import com.assistant.acc.service.poster.PosterService;
+import com.assistant.acc.service.project.ProjectService;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -11,11 +14,13 @@ import org.springframework.web.multipart.MultipartFile;
 public class ProjectController {
 
     private final PosterService posterService;
-
+    private final ProjectService projectService;
     // 생성자 주입 방식 (권장)
+    
     @Autowired
-    public ProjectController(PosterService posterService) {
+    public ProjectController(PosterService posterService, ProjectService projectService ) {
         this.posterService = posterService;
+        this.projectService = projectService;
     }
 
     // POST 요청으로 파일 + 문자열 데이터 받기
@@ -31,6 +36,11 @@ public class ProjectController {
         } catch (Exception e) {
             return ResponseEntity.status(500).body(e.getMessage());
         }
+    }
+
+    @GetMapping("/project/analyze/lastst")
+    public ProposalMetadata getProposalMetadata() {
+        return projectService.getLatestProposalMetadata();
     }
 }
 
