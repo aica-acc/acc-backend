@@ -19,5 +19,11 @@ public interface ProjectService {
      */
     public void saveProposalMetadata(ProposalMetadata metadata);
 
+    /**
+     * ProposalMEtadata조회
+     */
+    public ProposalMetadata getLatestProposalMetadata();
+
+
 
 }
