@@ -24,7 +24,7 @@ public class ProjectServiceImpl implements ProjectService {
     @Transactional
     public Project createProjectAndSaveInput(String theme, String keywords, String title, String memeberId) {
         Project newProject = new Project();
-        newProject.setMemberNo("M0000001");
+        newProject.setMemberNo("M000001");
         projectMapper.insertProject(newProject);
         Integer newPNo = newProject.getProjectNo();
 
