@@ -8,6 +8,10 @@ import com.assistant.acc.dto.poster.PosterSummary;
 import com.assistant.acc.dto.poster.PosterStrategy;
 import com.assistant.acc.mapper.project.ProjectMapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import com.assistant.acc.utility.FileSave;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -25,6 +29,9 @@ import java.util.*;
 @Service
 public class PosterService {
 
+    @Autowired
+    private FileSave fileSave;
+    
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
     private final ProjectMapper projectMapper;
@@ -43,7 +50,7 @@ public class PosterService {
         System.out.println("분석 시작 (서비스)");
 
         // 1️⃣ 새 프로젝트 생성
-        String currentMemberId = "M0000001"; // 임시 하드코딩
+        String currentMemberId = "M000001"; // 임시 하드코딩
         Project newProject = new Project();
         newProject.setMemberNo(currentMemberId);
         projectMapper.insertProject(newProject);
@@ -60,6 +67,10 @@ public class PosterService {
         projectMapper.insertInitialUserInput(input);
 
         System.out.println("사용자 초기 입력 저장 완료.");
+
+        // 5️⃣ 파일 저장 + DB 기록 (proposal_file_path 테이블)    
+        String savedFilePath = fileSave.saveFileAndRecord(file, currentMemberId);
+        System.out.println("파일 저장 완료: " + savedFilePath);
 
         // 3️⃣ Python 서버 호출
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
