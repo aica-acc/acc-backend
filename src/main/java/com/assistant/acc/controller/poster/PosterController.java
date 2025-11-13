@@ -12,7 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.assistant.acc.service.poster.PosterService;
 
 @RestController
-@RequestMapping("/api/poster")
+@RequestMapping("/api")
 @CrossOrigin(origins = {"http://localhost:5173", "http://localhost:5175"})
 public class PosterController {
 
@@ -26,7 +26,7 @@ public class PosterController {
      * [API 1] 1단계 UI: "분석" 버튼용 (React -> Java)
      * React의 /analyze 요청을 받아 Python의 /analyze로 전달.
      */
-    @PostMapping("/analyze")
+    @PostMapping("/analyze/poster")
     public ResponseEntity<String> analyzePoster(
             @RequestParam("file") MultipartFile file,
             @RequestParam("theme") String theme,
