@@ -5,6 +5,9 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.*;
 
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -17,7 +20,18 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Slf4j
 @Configuration
-public class WebConfig {
+public class WebConfig implements WebMvcConfigurer {
+
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+
+        String imagePath = "file:///C:/final_project/ACC/acc-ai/홍보물/";
+
+        log.info("🚀 정적 이미지 리소스 핸들러 등록: /poster-images/** -> " + imagePath);
+
+        registry.addResourceHandler("/poster-images/**") // (웹 주소: /poster-images/)
+                .addResourceLocations(imagePath);        // (실제 경로: C:/.../홍보물/
+    }
 
     private static final String[] AUTH_WHITELIST = {
             "/**"   // ✅ 모든 요청 허용
