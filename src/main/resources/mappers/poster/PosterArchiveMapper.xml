@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.assistant.acc.mapper.poster.PosterArchiveMapper">
+
+    <resultMap id="PosterArchiveDTOResultMap" type="com.assistant.acc.dto.poster.PosterArchiveDTO">
+        <result property="id" column="poster_reference_data_no"/>
+        <result property="year" column="year"/>
+        <result property="festivalName" column="festival_name"/>
+        <result property="imageUrl" column="image_path"/>
+        <result property="aesthetic" column="aesthetic"/>
+        <result property="aestheticDescription" column="aesthetic_description"/>
+        <result property="thematic" column="thematic_description"/>
+        <result property="readability" column="readability"/>
+        <result property="readabilityDescription" column="readability_description"/>
+        <result property="creativity" column="creativity"/>
+        <result property="creativityDescription" column="creativity_description"/>
+    </resultMap>
+
+    <select id="findPosters" resultMap="PosterArchiveDTOResultMap">
+        SELECT
+            r.poster_reference_data_no,
+            r.year,
+            r.region,
+            r.festival_name,
+            r.image_path,
+
+            s.aesthetic,
+            s.aesthetic_description,
+            s.thematic,
+            s.thematic_description,
+            s.readability,
+            s.readability_description,
+            s.creativity,
+            s.creativity_description
+
+        FROM
+            poster_reference_data r
+
+        JOIN
+            poster_score s
+        ON
+            r.poster_reference_data_no = s.poster_reference_data_no
+
+        <where>
+            <if test="year != null and year != ''">
+                and r.year = #{year}
+            </if>
+            <if test="theme != null and theme != ''">
+                AND s.thematic_descrition LIKE CONCAT('%', #{theme}, '%')
+            </if>
+        </where>
+    </select>
+</mapper>
