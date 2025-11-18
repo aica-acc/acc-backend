@@ -13,6 +13,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
@@ -44,6 +45,7 @@ public class PosterServiceImpl implements PosterService {
     }
 
     @Override //인터페이스 메서드 구현
+    @Transactional
     public String analyze(MultipartFile file, String theme, String keywords, String title) throws IOException {
 
         System.out.println("분석시작 (PosterService)");
