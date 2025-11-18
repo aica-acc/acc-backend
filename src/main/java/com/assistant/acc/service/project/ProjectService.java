@@ -1,6 +1,7 @@
 package com.assistant.acc.service.project;
 
 import java.io.IOException;
+import java.util.Map;
 
 import org.springframework.web.multipart.MultipartFile;
 import com.assistant.acc.domain.project.Project;
@@ -47,6 +48,8 @@ public interface ProjectService {
      * ProposalMEtadata조회
      */
     public ProposalMetadata getLatestProposalMetadata();
+
+    public  Map<String, Object> analyzeTotalTrend(String keyword, String title, String festivalStartDate) throws IOException;
 
 
 
