@@ -111,12 +111,6 @@ public class PosterServiceImpl implements PosterService {
         return new ImageRegenerateResponseDTO(filePathNo, newImageUrl, visualPrompt, true, "success");
     }
 
-    @Override
-    public String generateDrafts(String jsonBody) throws IOException {
-        // (구현 생략 또는 필요 시 추가)
-        return "";
-    }
-
     // ==========================================================================
     // 기존 기능 (유지)
     // ==========================================================================
@@ -228,6 +222,23 @@ public class PosterServiceImpl implements PosterService {
         headers.setContentType(MediaType.APPLICATION_JSON);
         HttpEntity<String> request = new HttpEntity<>(jsonBody, headers);
         ResponseEntity<String> response = restTemplate.postForEntity(PYTHON_API_URL + "/create-image", request, String.class);
+        return response.getBody();
+    }
+
+    @Override
+    public String generateDrafts(String jsonBody) throws IOException {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        //프론트엔드에서 받은 데이터 파이썬에게 토스
+        HttpEntity<String> request = new HttpEntity<>(jsonBody, headers);
+
+        //파이썬 서버 호출
+        ResponseEntity<String> response = restTemplate.postForEntity(
+                PYTHON_API_URL + "/generate-drafts", request, String.class
+        );
+
+        System.out.println("✅ [Java] 초안 생성 완료. 결과 반환.");
         return response.getBody();
     }
 }

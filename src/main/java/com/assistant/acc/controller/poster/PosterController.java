@@ -3,6 +3,8 @@ package com.assistant.acc.controller.poster;
 import com.assistant.acc.dto.image.ImageRegenerateResponseDTO;
 import com.assistant.acc.dto.image.PosterElementDTO;
 import com.assistant.acc.service.poster.PosterService;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -77,4 +79,5 @@ public class PosterController {
             return ResponseEntity.status(500).body(Map.of("message", "재생성 실패: " + e.getMessage()));
         }
     }
+
 }

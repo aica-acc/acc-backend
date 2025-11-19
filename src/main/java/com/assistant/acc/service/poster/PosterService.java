@@ -52,5 +52,4 @@ public interface PosterService {
     PosterArchiveDTO getPosterById(Integer filePathNo);
     List<PosterElementDTO> getPosterPrompts(Integer projectNo);
     ImageRegenerateResponseDTO regeneratePoster(Integer filePathNo, String visualPrompt) throws IOException;
-
 }
