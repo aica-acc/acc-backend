@@ -49,7 +49,7 @@ public class ProjectController {
     // }
 
 
-    @GetMapping("/project/analyze/lastst")
+    @GetMapping("/project/analyze/latest")
     public ProposalMetadata getProposalMetadata() {
         return projectService.getLatestProposalMetadata();
     }

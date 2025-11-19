@@ -74,7 +74,7 @@ public class PosterServiceImpl implements PosterService {
 
         System.out.println("Java → Python API 호출 시작 (PosterService)");
         ResponseEntity<String> response = restTemplate.postForEntity(
-                PYTHON_API_URL + "/poster/analyze",
+                PYTHON_API_URL + "/analyze/proposal",
                 request,
                 String.class);
 
@@ -204,7 +204,7 @@ public class PosterServiceImpl implements PosterService {
         //3. AI 서버 2단계 API 호출
         System.out.println("Java → Python API 2단계 (/generate-prompt) 호출...");
         ResponseEntity<String> response = restTemplate.postForEntity(
-                PYTHON_API_URL + "/poster/generate-prompt",
+                PYTHON_API_URL + "/generate-prompt",
                 request,
                 String.class
         );
@@ -227,9 +227,9 @@ public class PosterServiceImpl implements PosterService {
         HttpEntity<String> request = new HttpEntity<>(jsonBody, headers);
 
         //3. AI 서버 3단계 API 호출
-        System.out.println("Java → Python API 3단계 (/generate-prompt) 호출...");
+        System.out.println("Java → Python API 3단계 (/create-image) 호출...");
         ResponseEntity<String> response = restTemplate.postForEntity(
-                PYTHON_API_URL + "/poster/create-image",
+                PYTHON_API_URL + "/create-image",
                 request,
                 String.class
         );
