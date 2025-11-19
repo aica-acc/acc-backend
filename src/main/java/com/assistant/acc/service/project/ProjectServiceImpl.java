@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpEntity;
@@ -28,6 +29,10 @@ import com.assistant.acc.dto.project.ProposalAnalyzeResponse;
 import com.assistant.acc.mapper.project.ProjectMapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import lombok.extern.slf4j.Slf4j;
+
+
+@Slf4j
 @Service
 public class ProjectServiceImpl implements ProjectService {
 
@@ -255,7 +260,47 @@ public class ProjectServiceImpl implements ProjectService {
         resultDates.add(parsedEndDate != null ? parsedEndDate : parsedStartDate);
         return resultDates;
     }
-    
 
+    @Override
+    public Map<String, Object> analyzeTotalTrend(String keyword, String title, String festivalStartDate) throws IOException {
 
-}
+        log.info("📡 [ServiceImpl] Python 트렌드 요청: keyword={}, title={}", keyword, title);
+
+        try {
+            // 1️⃣ FormData 생성
+            MultiValueMap<String, Object> formData = new LinkedMultiValueMap<>();
+            formData.add("keyword", keyword);
+            formData.add("title", title);
+            formData.add("festivalStartDate", festivalStartDate);
+
+            // 2️⃣ 헤더 설정 (multipart/form-data)
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+            // 3️⃣ HttpEntity 생성
+            HttpEntity<MultiValueMap<String, Object>> requestEntity =
+                    new HttpEntity<>(formData, headers);
+
+            // 4️⃣ Python FastAPI 호출
+            String pythonUrl = "http://localhost:5000/analyze/total_trend";
+
+            Map<String, Object> result = restTemplate.postForObject(
+                    pythonUrl,
+                    requestEntity,
+                    Map.class
+            );
+
+            log.info("✔ Python 응답 수신: {}", result);
+            return result;
+
+        } catch (Exception e) {
+            log.error("❌ Python 트렌드 분석 실패", e);
+
+            return Map.of(
+                    "error", "Python 서버 요청 실패",
+                    "details", e.getMessage()
+            );
+        }
+    }
+
+}    
