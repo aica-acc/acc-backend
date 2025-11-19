@@ -1,7 +1,11 @@
 package com.assistant.acc.service.poster;
 
 import java.io.IOException;
+import java.util.List;
 
+import com.assistant.acc.dto.image.ImageRegenerateResponseDTO;
+import com.assistant.acc.dto.image.PosterElementDTO;
+import com.assistant.acc.dto.poster.PosterArchiveDTO;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
@@ -44,5 +48,9 @@ public interface PosterService {
 
     String createImage(String jsonBody) throws IOException;
 
+    String generateDrafts(String jsonBody) throws IOException;
+    PosterArchiveDTO getPosterById(Integer filePathNo);
+    List<PosterElementDTO> getPosterPrompts(Integer projectNo);
+    ImageRegenerateResponseDTO regeneratePoster(Integer filePathNo, String visualPrompt) throws IOException;
 
 }

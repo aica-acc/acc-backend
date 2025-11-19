@@ -1,55 +1,40 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.assistant.acc.mapper.poster.PosterArchiveMapper">
 
-    <resultMap id="PosterArchiveDTOResultMap" type="com.assistant.acc.dto.poster.PosterArchiveDTO">
-        <result property="id" column="poster_reference_data_no"/>
-        <result property="year" column="year"/>
-        <result property="festivalName" column="festival_name"/>
-        <result property="imageUrl" column="image_path"/>
-        <result property="aesthetic" column="aesthetic"/>
-        <result property="aestheticDescription" column="aesthetic_description"/>
-        <result property="thematic" column="thematic_description"/>
-        <result property="readability" column="readability"/>
-        <result property="readabilityDescription" column="readability_description"/>
-        <result property="creativity" column="creativity"/>
-        <result property="creativityDescription" column="creativity_description"/>
-    </resultMap>
+    <insert id="save" parameterType="com.assistant.acc.dto.poster.PosterArchiveDTO" useGeneratedKeys="true" keyProperty="filePathNo">
+        INSERT INTO poster_archive (project_no, file_name, file_url, visual_prompt, style_name, create_at)
+        VALUES (#{projectNo}, #{fileName}, #{fileUrl}, #{visualPrompt}, #{styleName}, NOW())
+    </insert>
 
-    <select id="findPosters" resultMap="PosterArchiveDTOResultMap">
+    <select id="findById" resultType="com.assistant.acc.dto.poster.PosterArchiveDTO">
         SELECT
-            r.poster_reference_data_no,
-            r.year,
-            r.region,
-            r.festival_name,
-            r.image_path,
-
-            s.aesthetic,
-            s.aesthetic_description,
-            s.thematic,
-            s.thematic_description,
-            s.readability,
-            s.readability_description,
-            s.creativity,
-            s.creativity_description
-
-        FROM
-            poster_reference_data r
-
-        JOIN
-            poster_score s
-        ON
-            r.poster_reference_data_no = s.poster_reference_data_no
-
-        <where>
-            <if test="year != null and year != ''">
-                and r.year = #{year}
-            </if>
-            <if test="theme != null and theme != ''">
-                AND s.thematic_descrition LIKE CONCAT('%', #{theme}, '%')
-            </if>
-        </where>
+            file_path_no as filePathNo,
+            project_no as projectNo,
+            file_name as fileName,
+            file_url as fileUrl,
+            visual_prompt as visualPrompt,
+            style_name as styleName,
+            create_at as createAt
+        FROM poster_archive
+        WHERE file_path_no = #{filePathNo}
     </select>
+
+    <select id="findPromptsByProjectNo" resultType="com.assistant.acc.dto.image.PosterElementDTO">
+        SELECT
+            file_path_no as filePathNo,
+            file_path_no as posterPromptNo,
+            visual_prompt as visualPrompt
+        FROM poster_archive
+        WHERE project_no = #{projectNo}
+    </select>
+
+    <update id="updatePosterImage">
+        UPDATE poster_archive
+        SET file_url = #{fileUrl},
+            visual_prompt = #{visualPrompt},
+            create_at = NOW()
+        WHERE file_path_no = #{filePathNo}
+    </update>
+
 </mapper>
