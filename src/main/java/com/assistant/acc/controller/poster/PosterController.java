@@ -3,6 +3,10 @@ package com.assistant.acc.controller.poster;
 import com.assistant.acc.dto.image.ImageRegenerateResponseDTO;
 import com.assistant.acc.dto.image.PosterElementDTO;
 import com.assistant.acc.service.poster.PosterService;
+import com.assistant.acc.dto.poster.PosterPromptRequest;
+import com.assistant.acc.dto.poster.PosterPromptResponse;
+import com.assistant.acc.dto.poster.PosterCreateRequest;
+import com.assistant.acc.dto.poster.PosterCreateResponse;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -39,22 +43,15 @@ public class PosterController {
 
     // [기존] 2단계 프롬프트 생성
     @PostMapping("/generate-prompt")
-    public ResponseEntity<String> generatePrompt(@RequestBody String jsonBody) {
-        try {
-            return ResponseEntity.ok(posterService.generatePrompt(jsonBody));
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body("Error: " + e.getMessage());
-        }
+    public ResponseEntity<PosterPromptResponse> generatePrompt(@RequestBody PosterPromptRequest requestDto) {
+        // Service가 이제 DTO를 반환
+        return ResponseEntity.ok(posterService.generatePrompt(requestDto));
     }
 
     // [기존] 3단계 이미지 생성
     @PostMapping("/create-image")
-    public ResponseEntity<String> createImage(@RequestBody String jsonBody) {
-        try {
-            return ResponseEntity.ok(posterService.createImage(jsonBody));
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body("Error: " + e.getMessage());
-        }
+    public ResponseEntity<PosterCreateResponse> createImage(@RequestBody PosterCreateRequest requestDto) {
+        return ResponseEntity.ok(posterService.createImage(requestDto));
     }
 
     // 포스터 목록 조회 (Poster.basePosterInfo 대응)
