@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.assistant.acc.mapper.poster.PosterArchiveMapper">
+
+    <insert id="save" parameterType="com.assistant.acc.dto.poster.PosterArchiveDTO" useGeneratedKeys="true" keyProperty="filePathNo">
+        INSERT INTO poster_archive (project_no, file_name, file_url, visual_prompt, style_name, create_at)
+        VALUES (#{projectNo}, #{fileName}, #{fileUrl}, #{visualPrompt}, #{styleName}, NOW())
+    </insert>
+
+    <select id="findById" resultType="com.assistant.acc.dto.poster.PosterArchiveDTO">
+        SELECT
+            file_path_no as filePathNo,
+            project_no as projectNo,
+            file_name as fileName,
+            file_url as fileUrl,
+            visual_prompt as visualPrompt,
+            style_name as styleName,
+            create_at as createAt
+        FROM poster_archive
+        WHERE file_path_no = #{filePathNo}
+    </select>
+
+    <select id="findPromptsByProjectNo" resultType="com.assistant.acc.dto.image.PosterElementDTO">
+        SELECT
+            file_path_no as filePathNo,
+            file_path_no as posterPromptNo,
+            visual_prompt as visualPrompt
+        FROM poster_archive
+        WHERE project_no = #{projectNo}
+    </select>
+
+    <update id="updatePosterImage">
+        UPDATE poster_archive
+        SET file_url = #{fileUrl},
+            visual_prompt = #{visualPrompt},
+            create_at = NOW()
+        WHERE file_path_no = #{filePathNo}
+    </update>
+
+</mapper>
