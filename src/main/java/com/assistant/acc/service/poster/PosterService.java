@@ -5,7 +5,7 @@ import java.util.List;
 
 import com.assistant.acc.dto.image.ImageRegenerateResponseDTO;
 import com.assistant.acc.dto.image.PosterElementDTO;
-import com.assistant.acc.dto.poster.PosterArchiveDTO;
+import com.assistant.acc.dto.poster.*;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
@@ -35,7 +35,7 @@ public interface PosterService {
      * @throws IOException
      */
 
-    String generatePrompt(String jsonBody) throws IOException;
+    PosterPromptResponse generatePrompt(PosterPromptRequest request);
 
     /**
      * 3단계: 최종 홍보물 생성을 Python 서버에 요청.
@@ -46,7 +46,7 @@ public interface PosterService {
      * @throws IOException
      */
 
-    String createImage(String jsonBody) throws IOException;
+    PosterCreateResponse createImage(PosterCreateRequest request);
 
     String generateDrafts(String jsonBody) throws IOException;
     PosterArchiveDTO getPosterById(Integer filePathNo);
