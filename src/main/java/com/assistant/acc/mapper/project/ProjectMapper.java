@@ -22,6 +22,8 @@ public interface ProjectMapper {
     Integer selectLatestProjectNo(@Param("m_no") String m_no);
     // 2) p_no 기준 기획서 메타데이터 조회
     ProposalMetadata selectProposalMetadata(@Param("p_no") Integer p_no);
+
+    ProposalMetadata findMetadataByPno(Integer pNo);
     
 }
 

@@ -95,4 +95,16 @@
         ORDER BY create_at DESC
         LIMIT 1;
     </select>
+    <!-- 5) 프로젝트 번호로 메타데이터 조회 -->
+    <select id="findMetadataByPno" parameterType="int" resultType="com.assistant.acc.domain.project.ProposalMetadata">
+        SELECT
+            proposal_metadata_no AS proposalMetadataNo,
+            p_no AS pNo,
+            title,
+            visual_keywords AS visualKeywords,
+            concept_description AS conceptDescription
+        FROM proposal_metadata
+        WHERE p_no = #{pNo}
+            LIMIT 1
+    </select>
 </mapper>
