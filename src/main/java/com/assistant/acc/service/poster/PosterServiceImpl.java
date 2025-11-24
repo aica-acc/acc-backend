@@ -1,6 +1,8 @@
 package com.assistant.acc.service.poster;
 
+import com.assistant.acc.domain.project.Project;
 import com.assistant.acc.domain.project.ProposalMetadata;
+import com.assistant.acc.dto.create.prompt.PosterPromptApiRequest;
 import com.assistant.acc.dto.image.ImageRegenerateResponseDTO;
 import com.assistant.acc.dto.image.PosterElementDTO;
 import com.assistant.acc.dto.poster.*;
@@ -20,6 +22,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
@@ -34,6 +37,7 @@ public class PosterServiceImpl implements PosterService {
     // 파이썬 서버 주소 (포트 번호 확인! 아까 5000 혹은 5001로 하셨죠?)
     private static final String PYTHON_API_URL = "http://localhost:5000";
 
+    // 생성자 주입 (Mapper 포함)
     public PosterServiceImpl(RestTemplate restTemplate, ObjectMapper objectMapper, ProjectService projectService, PosterArchiveMapper posterArchiveMapper) {
         this.restTemplate = restTemplate;
         this.objectMapper = objectMapper;
@@ -119,7 +123,7 @@ public class PosterServiceImpl implements PosterService {
         // 4. 파이썬 호출 (아까 만든 /test/gemini-capability 경로 사용)
         // 나중에 실제 경로명으로 바꾸세요 (예: /api/edit-poster-ai)
         ResponseEntity<String> response = restTemplate.postForEntity(
-                PYTHON_API_URL + "/test/gemini-capability",
+                PYTHON_API_URL + "/create-image",
                 request,
                 String.class
         );
@@ -153,10 +157,24 @@ public class PosterServiceImpl implements PosterService {
         return null;
     }
 
-    @Override
-    public PosterPromptResponse generatePrompt(PosterPromptRequest requestDto) { return null; }
-    @Override
-    public PosterCreateResponse createImage(PosterCreateRequest requestDto) { return null; }
+    public PosterPromptResponse generatePrompt(PosterPromptApiRequest requestDto) {
+        // 1. 헤더 설정
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        // 2. 요청 객체(DTO)를 Entity에 담기 (Spring이 알아서 JSON으로 바꿔줍니다)
+        HttpEntity<PosterPromptApiRequest> requestEntity = new HttpEntity<>(requestDto, headers);
+
+        // 3. Python 호출 (응답도 DTO 클래스를 지정하면 알아서 파싱해줍니다)
+        ResponseEntity<PosterPromptResponse> response = restTemplate.postForEntity(
+                PYTHON_API_URL + "/generate-prompt",
+                requestEntity,
+                PosterPromptResponse.class
+        );
+
+        return response.getBody();
+    }
+
     @Override
     public String generateDrafts(String jsonBody) throws IOException { return null; }
 }
