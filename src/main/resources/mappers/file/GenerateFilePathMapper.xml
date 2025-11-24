@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.assistant.acc.mapper.file.GenerateFilePathMapper">
+
+    <resultMap id="FilePathMap" type="com.assistant.acc.domain.file.GenerateFilePath">
+        <id property="generateFilePathNo" column="generate_file_path_no"/>
+        <result property="generatedAssetNo" column="generated_asset_no"/>
+        <result property="filePath" column="file_path"/>
+        <result property="fileName" column="file_name"/>
+        <result property="extension" column="extension"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <!-- INSERT -->
+    <insert id="FilePathInsert" useGeneratedKeys="true" keyProperty="generateFilePathNo">
+        INSERT INTO generate_file_path (generated_asset_no, file_path, file_name, extension, created_at)
+        VALUES (#{generatedAssetNo}, #{filePath}, #{fileName}, #{extension}, NOW())
+    </insert>
+
+    <!-- SELECT -->
+    <select id="FilePathSelect" resultMap="FilePathMap">
+        SELECT * FROM generate_file_path WHERE generate_file_path_no = #{generateFilePathNo}
+    </select>
+
+    <select id="FilePathSelects" resultMap="FilePathMap">
+        SELECT * FROM generate_file_path WHERE generated_asset_no = #{generatedAssetNo}
+        ORDER BY created_at DESC
+    </select>
+
+    <!-- UPDATE -->
+    <update id="FilePathUpdate">
+        UPDATE generate_file_path
+        SET file_path = #{filePath},
+        file_name = #{fileName},
+        extension = #{extension}
+        WHERE generate_file_path_no = #{generateFilePathNo}
+    </update>
+
+    <!-- DELETE -->
+    <delete id="FilePathDelete">
+        DELETE FROM generate_file_path WHERE generate_file_path_no = #{generateFilePathNo}
+    </delete>
+
+</mapper>

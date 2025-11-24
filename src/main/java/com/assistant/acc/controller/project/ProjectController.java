@@ -4,13 +4,18 @@ import com.assistant.acc.domain.project.ProposalMetadata;
 import com.assistant.acc.service.poster.PosterService;
 import com.assistant.acc.service.project.ProjectService;
 
+import lombok.extern.slf4j.Slf4j;
+
+import java.io.IOException;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+@Slf4j
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/project")
 public class ProjectController {
 
     private final ProjectService projectService;
@@ -22,7 +27,7 @@ public class ProjectController {
     }
 
     // POST 요청으로 파일 + 문자열 데이터 받기
-    @PostMapping("/project/analyze/proposal")
+    @PostMapping("/analyze/proposal")
     public ResponseEntity<ProposalMetadata> analyzeProposal(
             @RequestParam("file") MultipartFile file,
             @RequestParam("theme") String theme,
@@ -36,21 +41,24 @@ public class ProjectController {
         }
     }
 
-    // @PostMapping("/project/analyze/total_trend")
-    // public ResponseEntity<String> analyzeTotalTrend(
-    //         @RequestParam("keywords") String keywords,
-    //         @RequestParam("title") String title) {
-    //     try {
-    //         String metadata  = projectService.analyzeTrned(file, theme, keywords, title);
-    //         return ResponseEntity.ok(metadata );
-    //     } catch (Exception e) {
-    //         return ResponseEntity.status(500).body(e.getMessage());
-    //     }
-    // }
-
-
-    @GetMapping("/project/analyze/lastst")
+    @GetMapping("/analyze/lastst")
     public ProposalMetadata getProposalMetadata() {
         return projectService.getLatestProposalMetadata();
     }
+
+    @PostMapping("/analyze/total_trend")
+    public ResponseEntity<?> analyzeTotalTrend(
+        @RequestParam("keyword") String keyword,
+        @RequestParam("title") String title,
+        @RequestParam("festival_start_date") String festivalStartDate
+        ) throws IOException {
+            log.info("📌 요청 수신: keyword={}, title={}", keyword, title);
+
+            var result = projectService.analyzeTotalTrend(keyword, title, festivalStartDate);
+            return ResponseEntity.ok(result);
+        }
+
+
+
 }
+

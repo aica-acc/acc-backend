@@ -1,0 +1,19 @@
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.assistant.acc.mapper.image.ImageMapper">
+
+    <select id="findImageDetailById" resultType="com.assistant.acc.dto.image.ImageDetailDTO">
+        SELECT
+            P.file_path_no,
+            p.file_url,
+            p.file_name,
+            'png' as extension_name,
+            'AI' as source_type,
+            p.create_at,
+            m.title as festival_name,
+            m.location as region,
+            YEAR(m.festival_start_date) as year
+        FROM poster_archive p
+        LEFT JOIN proposal_metadata m On p.project_no = m.project_no
+        WHERE p.file_path_no = #{filePathNo}
+    </select>
+</mapper>
