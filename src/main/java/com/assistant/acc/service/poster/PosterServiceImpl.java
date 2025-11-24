@@ -2,6 +2,7 @@ package com.assistant.acc.service.poster;
 
 import com.assistant.acc.domain.project.Project;
 import com.assistant.acc.domain.project.ProposalMetadata;
+import com.assistant.acc.dto.create.prompt.PosterPromptApiRequest;
 import com.assistant.acc.dto.image.ImageRegenerateResponseDTO;
 import com.assistant.acc.dto.image.PosterElementDTO;
 import com.assistant.acc.dto.poster.*;
@@ -205,38 +206,19 @@ public class PosterServiceImpl implements PosterService {
     }
 
     @Override
-    public PosterPromptResponse generatePrompt(PosterPromptRequest requestDto) {
+    public PosterPromptResponse generatePrompt(PosterPromptApiRequest requestDto) {
         // 1. 헤더 설정
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
 
         // 2. 요청 객체(DTO)를 Entity에 담기 (Spring이 알아서 JSON으로 바꿔줍니다)
-        HttpEntity<PosterPromptRequest> requestEntity = new HttpEntity<>(requestDto, headers);
+        HttpEntity<PosterPromptApiRequest> requestEntity = new HttpEntity<>(requestDto, headers);
 
         // 3. Python 호출 (응답도 DTO 클래스를 지정하면 알아서 파싱해줍니다)
         ResponseEntity<PosterPromptResponse> response = restTemplate.postForEntity(
                 PYTHON_API_URL + "/generate-prompt",
                 requestEntity,
                 PosterPromptResponse.class
-        );
-
-        return response.getBody();
-    }
-
-    @Override
-    public PosterCreateResponse createImage(PosterCreateRequest requestDto) {
-        // 1. 헤더 설정
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-
-        // 2. DTO를 Entity에 담기
-        HttpEntity<PosterCreateRequest> requestEntity = new HttpEntity<>(requestDto, headers);
-
-        // 3. Python API 호출 (응답도 DTO로 자동 매핑)
-        ResponseEntity<PosterCreateResponse> response = restTemplate.postForEntity(
-                PYTHON_API_URL + "/create-image",
-                requestEntity,
-                PosterCreateResponse.class
         );
 
         return response.getBody();

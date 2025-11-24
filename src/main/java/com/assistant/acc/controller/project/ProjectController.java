@@ -41,7 +41,7 @@ public class ProjectController {
         }
     }
 
-      @GetMapping("/analyze/lastst")
+    @GetMapping("/analyze/lastst")
     public ProposalMetadata getProposalMetadata() {
         return projectService.getLatestProposalMetadata();
     }
@@ -50,7 +50,7 @@ public class ProjectController {
     public ResponseEntity<?> analyzeTotalTrend(
         @RequestParam("keyword") String keyword,
         @RequestParam("title") String title,
-        @RequestParam("festivalStartDate") String festivalStartDate
+        @RequestParam("festival_start_date") String festivalStartDate
         ) throws IOException {
             log.info("📌 요청 수신: keyword={}, title={}", keyword, title);
 

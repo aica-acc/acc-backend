@@ -3,6 +3,9 @@ package com.assistant.acc.service.poster;
 import java.io.IOException;
 import java.util.List;
 
+import com.assistant.acc.dto.create.poster.PosterCreateApiRequest;
+import com.assistant.acc.dto.create.poster.PosterCreateImageResponse;
+import com.assistant.acc.dto.create.prompt.PosterPromptApiRequest;
 import com.assistant.acc.dto.image.ImageRegenerateResponseDTO;
 import com.assistant.acc.dto.image.PosterElementDTO;
 import com.assistant.acc.dto.poster.*;
@@ -35,7 +38,7 @@ public interface PosterService {
      * @throws IOException
      */
 
-    PosterPromptResponse generatePrompt(PosterPromptRequest request);
+    PosterPromptResponse generatePrompt(PosterPromptApiRequest request);
 
     /**
      * 3단계: 최종 홍보물 생성을 Python 서버에 요청.
@@ -45,8 +48,6 @@ public interface PosterService {
      * @return AI 서버가 반환한 최종 결과물(이미지 URL 등 JSON)
      * @throws IOException
      */
-
-    PosterCreateResponse createImage(PosterCreateRequest request);
 
     String generateDrafts(String jsonBody) throws IOException;
     PosterArchiveDTO getPosterById(Integer filePathNo);
