@@ -9,6 +9,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
+import com.assistant.acc.dto.project.RegionTrendResponseDTO;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -300,6 +301,42 @@ public class ProjectServiceImpl implements ProjectService {
                     "error", "Python 서버 요청 실패",
                     "details", e.getMessage()
             );
+        }
+    }
+    @Override
+    public RegionTrendResponseDTO analyzeRegionTrend(String keyword, String host, String title, String festivalStartDate) {
+
+        log.info("📡 [ServiceImpl] 지역 트렌드 요청: title={}, host={}", title, host);
+
+        try {
+            // 1. 파이썬으로 보낼 데이터 (Form Data)
+            MultiValueMap<String, Object> formData = new LinkedMultiValueMap<>();
+            formData.add("keyword", keyword);
+            formData.add("host", host);
+            formData.add("title", title);
+            formData.add("festivalStartDate", festivalStartDate);
+
+            // 2. 헤더 설정
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+            // 3. 요청 생성
+            HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(formData, headers);
+
+            // 4. 파이썬 서버 호출
+            String pythonUrl = "http://localhost:5000/analyze/region_trend";
+
+            ResponseEntity<RegionTrendResponseDTO> response = restTemplate.postForEntity(
+                    pythonUrl,
+                    requestEntity,
+                    RegionTrendResponseDTO.class
+            );
+
+            return response.getBody();
+
+        } catch (Exception e) {
+            log.error("❌ Python 지역 트렌드 분석 실패", e);
+            return new RegionTrendResponseDTO(); // 빈 껍데기 반환
         }
     }
 

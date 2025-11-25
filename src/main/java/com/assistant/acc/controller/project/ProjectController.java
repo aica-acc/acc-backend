@@ -1,6 +1,7 @@
 package com.assistant.acc.controller.project;
 
 import com.assistant.acc.domain.project.ProposalMetadata;
+import com.assistant.acc.dto.project.RegionTrendResponseDTO;
 import com.assistant.acc.service.poster.PosterService;
 import com.assistant.acc.service.project.ProjectService;
 
@@ -57,6 +58,20 @@ public class ProjectController {
             var result = projectService.analyzeTotalTrend(keyword, title, festivalStartDate);
             return ResponseEntity.ok(result);
         }
+
+    @PostMapping("/analyze/region_trend")
+    public ResponseEntity<RegionTrendResponseDTO> analyzeRegionTrend(
+            @RequestParam("keyword") String keyword,
+            @RequestParam("host") String host,
+            @RequestParam("title") String title,  // [추가]
+            @RequestParam("festival_start_date") String festivalStartDate
+    ) {
+        // 서비스 호출 시 title 전달
+        RegionTrendResponseDTO result = projectService.analyzeRegionTrend(keyword, host, title, festivalStartDate);
+
+        return ResponseEntity.ok(result);
+    }
+
 
 
 

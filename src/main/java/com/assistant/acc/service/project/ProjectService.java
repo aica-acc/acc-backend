@@ -3,6 +3,7 @@ package com.assistant.acc.service.project;
 import java.io.IOException;
 import java.util.Map;
 
+import com.assistant.acc.dto.project.RegionTrendResponseDTO;
 import org.springframework.web.multipart.MultipartFile;
 import com.assistant.acc.domain.project.Project;
 import com.assistant.acc.domain.project.ProposalMetadata;
@@ -50,6 +51,8 @@ public interface ProjectService {
     public ProposalMetadata getLatestProposalMetadata();
 
     public  Map<String, Object> analyzeTotalTrend(String keyword, String title, String festivalStartDate) throws IOException;
+
+    RegionTrendResponseDTO analyzeRegionTrend(String keyword, String host, String title, String festivalStartDate);
 
 
 
