@@ -1,7 +1,7 @@
-package com.assistant.acc.service.poster;
+package com.assistant.acc.service.poster.generate;
 
 import com.assistant.acc.domain.prompt.Prompt;
-import com.assistant.acc.dto.create.CreateImageResultResponse;
+import com.assistant.acc.dto.create.poster.CreateImageResultResponse;
 
 import java.util.List;
 import java.util.Map;

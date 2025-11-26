@@ -1,4 +1,4 @@
-package com.assistant.acc.dto.create;
+package com.assistant.acc.dto.create.prompt;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;

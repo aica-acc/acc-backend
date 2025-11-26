@@ -1,12 +1,10 @@
 package com.assistant.acc.service.file;
 
-import com.assistant.acc.domain.create.poster.PosterElement;
 import com.assistant.acc.domain.file.AssetDetail;
 import com.assistant.acc.domain.file.AssetElement;
 import com.assistant.acc.dto.file.AssetDetailRequestDto;
 import com.assistant.acc.dto.file.AssetQueryRequest;
 import com.assistant.acc.mapper.file.AssetsMapper;
-import com.assistant.acc.mapper.poster.PosterMapper;
 import com.assistant.acc.mapper.project.ProjectMapper;
 import com.assistant.acc.mapper.project.promotion.GeneratedAssetMapper;
 import lombok.AllArgsConstructor;

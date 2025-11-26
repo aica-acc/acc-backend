@@ -86,4 +86,53 @@ public class FileStorageService {
 
         generateFilePathMapper.FilePathInsert(path);
     }
+
+    public void overwritePosterImage(
+            String memberNo,
+            Integer projectNo,
+            String newFilename,
+            String oldFilename
+    ) {
+
+        String targetDir = Paths.get(
+                baseDir,
+                "public",
+                "data",
+                "promotion",
+                memberNo,
+                projectNo.toString(),
+                "poster"
+        ).toString();
+
+        // 경로 보장
+        File dir = new File(targetDir);
+        if (!dir.exists()) {
+            dir.mkdirs();
+        }
+
+        /* ⭐ (1) Python 생성 폴더에서 새 파일 가져오기 */
+        File src = new File(PYTHON_SAVE_DIR + newFilename);
+
+        if (!src.exists()) {
+            System.out.println("⚠ regenerate된 이미지가 Python 폴더에 없음: " + src.getAbsolutePath());
+            return;
+        }
+
+        /* ⭐ (2) 기존 파일 삭제 */
+        File oldFile = new File(targetDir + "/" + oldFilename);
+        if (oldFile.exists()) {
+            boolean deleted = oldFile.delete();
+            if (!deleted) {
+                System.out.println("❌ 기존 파일 삭제 실패: " + oldFile.getAbsolutePath());
+            }
+        }
+
+        /* ⭐ (3) 새 파일 이동 */
+        File dest = new File(targetDir + "/" + newFilename);
+        boolean moved = src.renameTo(dest);
+        if (!moved) {
+            System.out.println("❌ regenerate 파일 이동 실패: " + src.getAbsolutePath());
+        }
+
+    }
 }
