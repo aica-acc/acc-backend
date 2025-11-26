@@ -1,6 +1,7 @@
-package com.assistant.acc.dto.create;
+package com.assistant.acc.dto.create.poster;
 
 import com.assistant.acc.domain.project.ProposalMetadata;
+import com.assistant.acc.dto.create.prompt.SelectedPromptDataDto;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
