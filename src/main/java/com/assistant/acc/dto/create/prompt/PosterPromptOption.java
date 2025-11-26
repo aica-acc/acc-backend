@@ -1,6 +1,6 @@
-package com.assistant.acc.dto.create;
+package com.assistant.acc.dto.create.prompt;
 
-import com.assistant.acc.dto.create.prompt.PosterTextContent;
+import com.assistant.acc.dto.create.poster.PosterImageTextContentDto;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
