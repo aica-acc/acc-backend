@@ -107,4 +107,15 @@
         WHERE p_no = #{pNo}
             LIMIT 1
     </select>
+    <!-- 6) 프로젝트 번호로 메타데이터 조회(지역 트렌드) -->
+    <select id="selectUserInput" parameterType="int" resultType="com.assistant.acc.domain.project.UserInput">
+        SELECT
+            user_input_no,
+            p_no,
+            theme,
+            keywords,  p_name
+        FROM user_input
+        WHERE p_no = #{pNo}
+            LIMIT 1
+    </select>
 </mapper>

@@ -52,7 +52,7 @@ public interface ProjectService {
 
     public  Map<String, Object> analyzeTotalTrend(String keyword, String title, String festivalStartDate) throws IOException;
 
-    RegionTrendResponseDTO analyzeRegionTrend(String keyword, String host, String title, String festivalStartDate);
+    RegionTrendResponseDTO analyzeRegionTrend(String m_no, String festivalStartDate);
 
 
 

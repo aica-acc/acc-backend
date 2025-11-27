@@ -5,11 +5,13 @@ import com.assistant.acc.dto.project.RegionTrendResponseDTO;
 import com.assistant.acc.service.poster.PosterService;
 import com.assistant.acc.service.project.ProjectService;
 
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
-
+import java.util.Map;
 import java.io.IOException;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -61,18 +63,19 @@ public class ProjectController {
 
     @PostMapping("/analyze/region_trend")
     public ResponseEntity<RegionTrendResponseDTO> analyzeRegionTrend(
-            @RequestParam("keyword") String keyword,
-            @RequestParam("host") String host,
-            @RequestParam("title") String title,  // [추가]
-            @RequestParam("festival_start_date") String festivalStartDate
+            @RequestParam(value = "festival_start_date", required = false) String festivalStartDate,
+            HttpServletRequest request
     ) {
-        // 서비스 호출 시 title 전달
-        RegionTrendResponseDTO result = projectService.analyzeRegionTrend(keyword, host, title, festivalStartDate);
+        // 1. 회원 ID 가져오기
+        // (인터셉터 등에서 request attribute에 m_no를 넣어준다고 가정)
+        String m_no = (String) request.getAttribute("m_no");
+        if(m_no==null) m_no = "M000001";
+
+        log.info("📌 [Controller] 지역 트렌드 요청: 회원={}, 날짜={}", m_no, festivalStartDate);
+        RegionTrendResponseDTO result = projectService.analyzeRegionTrend(m_no, festivalStartDate);
 
         return ResponseEntity.ok(result);
     }
-
-
 
 
 }

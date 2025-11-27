@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.assistant.acc.dto.project.RegionTrendResponseDTO;
+import org.apache.catalina.User;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -304,11 +305,37 @@ public class ProjectServiceImpl implements ProjectService {
         }
     }
     @Override
-    public RegionTrendResponseDTO analyzeRegionTrend(String keyword, String host, String title, String festivalStartDate) {
+    public RegionTrendResponseDTO analyzeRegionTrend(String m_no, String festivalStartDate) {
+        Integer pNo = projectMapper.selectLatestProjectNo(m_no);
+        ProposalMetadata meta = projectMapper.selectProposalMetadata(pNo);
 
-        log.info("📡 [ServiceImpl] 지역 트렌드 요청: title={}, host={}", title, host);
+        log.info("📡 [ServiceImpl] 지역 트렌드 요청: title={}, host={}", meta.getTitle(), meta.getHost());
 
         try {
+            // =========================================================
+            // [STEP 1] 분석에 필요한 데이터(키워드, 날짜) 확보
+            // =========================================================
+            // A. 키워드 가져오기 (UserInput 테이블 조회)
+            UserInput userInput = projectMapper.selectUserInput(pNo);
+            String keyword = (userInput != null) ? userInput.getKeywords() : meta.getTitle(); //
+
+            String host = meta.getHost();
+            String title = meta.getTitle();
+
+            // B. 날짜 처리 (DB에 있는 축제 시작일 사용)
+            if (festivalStartDate == null || festivalStartDate.isEmpty()) {
+                if (meta.getFestivalStartDate() != null) {
+                    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+                    festivalStartDate = sdf.format(meta.getFestivalStartDate());
+                } else {
+                    // DB에도 없으면 오늘 날짜
+                    festivalStartDate = new SimpleDateFormat("yyyy-MM-dd").format(new Date());
+                }
+            }
+
+            // =========================================================
+            // [STEP 2] 파이썬 AI 서버로 요청 보내기
+            // =========================================================
             // 1. 파이썬으로 보낼 데이터 (Form Data)
             MultiValueMap<String, Object> formData = new LinkedMultiValueMap<>();
             formData.add("keyword", keyword);
@@ -331,7 +358,7 @@ public class ProjectServiceImpl implements ProjectService {
                     requestEntity,
                     RegionTrendResponseDTO.class
             );
-
+            log.info("✔ Python 지역 트렌드 분석 성공");
             return response.getBody();
 
         } catch (Exception e) {

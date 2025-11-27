@@ -24,6 +24,8 @@ public interface ProjectMapper {
     ProposalMetadata selectProposalMetadata(@Param("p_no") Integer p_no);
 
     ProposalMetadata findMetadataByPno(Integer pNo);
+
+    UserInput selectUserInput(Integer pNo);
     
 }
 

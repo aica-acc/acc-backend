@@ -12,4 +12,9 @@ public class RegionTrendResponseDTO {
     private String festivalStartDate;
 
     private List<Map <String, Object>> region_trend;
+    //// 구조: [{"keyword": "죽녹원", "description": "...", "score": 9}, ...]
+    private List<Map<String, Object>> word_cloud;
+    private List<Map<String, Object>> family;
+    private List<Map<String, Object>> couple;
+    private List<Map<String, Object>> healing;
 }
