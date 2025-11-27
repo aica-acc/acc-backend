@@ -67,7 +67,7 @@
         SELECT p_no
         FROM project
         WHERE m_no = #{m_no}
-        ORDER BY create_at DESC
+        ORDER BY p_no DESC
         LIMIT 1
     </select>
 
