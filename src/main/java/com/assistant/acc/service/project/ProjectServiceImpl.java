@@ -92,6 +92,7 @@ public class ProjectServiceImpl implements ProjectService {
 
         // 1) 최신 프로젝트 번호 조회
         Integer latestPno = projectMapper.selectLatestProjectNo(DEFAULT_MEMBER_NO);
+        System.out.println("latestPno: " + latestPno);
         if (latestPno == null) {
             return null;
         }
