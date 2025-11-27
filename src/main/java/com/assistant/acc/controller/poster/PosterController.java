@@ -1,11 +1,12 @@
 package com.assistant.acc.controller.poster;
 
+import com.assistant.acc.domain.poster.RegenerateResponseDTO;
 import com.assistant.acc.domain.prompt.Prompt;
-import com.assistant.acc.dto.create.CreateImageResultResponse;
-import com.assistant.acc.dto.image.ImageRegenerateResponseDTO;
+import com.assistant.acc.dto.create.poster.CreateImageResultResponse;
 import com.assistant.acc.dto.image.PosterElementDTO;
-import com.assistant.acc.service.poster.PosterAPIService;
+import com.assistant.acc.service.poster.generate.PosterAPIService;
 import com.assistant.acc.service.poster.PosterService;
+import com.assistant.acc.service.poster.regenerate.PosterRegenerateService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,10 +22,12 @@ public class PosterController {
 
     private final PosterService posterService;
     private final PosterAPIService posterAPIService;
+    private final PosterRegenerateService posterRegenerateService;
 
-    public PosterController(PosterService posterService, PosterAPIService posterAPIService) {
+    public PosterController(PosterService posterService, PosterAPIService posterAPIService, PosterRegenerateService posterRegenerateService) {
         this.posterService = posterService;
         this.posterAPIService = posterAPIService;
+        this.posterRegenerateService = posterRegenerateService;
     }
 
     // [기존] 1단계 분석
@@ -78,16 +81,18 @@ public class PosterController {
     // 포스터 재생성 (Poster.updatePosterInfo 대응)
     // URL: /api/posters/{filePathNo}/regenerate
     @PostMapping("/posters/{filePathNo}/regenerate")
-    public ResponseEntity<?> regeneratePoster(
+    public ResponseEntity<RegenerateResponseDTO> regeneratePoster(
             @PathVariable Integer filePathNo,
-            @RequestBody Map<String, String> body) {
-        try {
-            String visualPrompt = body.get("visual_prompt");
-            ImageRegenerateResponseDTO result = posterService.regeneratePoster(filePathNo, visualPrompt);
-            return ResponseEntity.ok(result);
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of("message", "재생성 실패: " + e.getMessage()));
-        }
+            @RequestBody Map<String, Object> body,
+            HttpServletRequest request) {
+
+        String m_no = (String) request.getAttribute("m_no");
+        if(m_no == null) m_no = "M000001";
+        String visualPrompt = (String) body.get("visual_prompt");
+
+        RegenerateResponseDTO result = posterRegenerateService.regenerated(m_no, filePathNo, visualPrompt);
+
+        return ResponseEntity.ok(result);
     }
 
 }

@@ -1,9 +1,16 @@
-package com.assistant.acc.service.poster;
+package com.assistant.acc.service.poster.generate;
 
 import com.assistant.acc.domain.member.UserInputs;
 import com.assistant.acc.domain.project.ProposalMetadata;
 import com.assistant.acc.domain.prompt.Prompt;
 import com.assistant.acc.dto.create.*;
+import com.assistant.acc.dto.create.poster.CreateImageRequestDto;
+import com.assistant.acc.dto.create.poster.CreateImageResponseDto;
+import com.assistant.acc.dto.create.poster.CreateImageResultResponse;
+import com.assistant.acc.dto.create.prompt.CreatePromptRequestDto;
+import com.assistant.acc.dto.create.prompt.CreatePromptResponseDto;
+import com.assistant.acc.dto.create.prompt.PosterPromptOption;
+import com.assistant.acc.dto.create.prompt.SelectedPromptDataDto;
 import com.assistant.acc.mapper.project.ProjectMapper;
 import com.assistant.acc.mapper.prompt.PromptMapper;
 import com.assistant.acc.service.file.FileStorageService;

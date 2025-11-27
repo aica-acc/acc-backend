@@ -3,8 +3,6 @@ package com.assistant.acc.service.poster;
 import java.io.IOException;
 import java.util.List;
 
-import com.assistant.acc.dto.create.poster.PosterCreateApiRequest;
-import com.assistant.acc.dto.create.poster.PosterCreateImageResponse;
 import com.assistant.acc.dto.create.prompt.PosterPromptApiRequest;
 import com.assistant.acc.dto.image.ImageRegenerateResponseDTO;
 import com.assistant.acc.dto.image.PosterElementDTO;
