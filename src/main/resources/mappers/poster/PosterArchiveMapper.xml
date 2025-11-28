@@ -37,4 +37,11 @@
         WHERE file_path_no = #{filePathNo}
     </update>
 
+    <select id="findFilePathByNo" parameterType="int" resultType="string">
+        SELECT file_path
+        FROM generate_file_path
+        WHERE generated_asset_no = #{posterNo}
+            LIMIT 1
+    </select>
+
 </mapper>

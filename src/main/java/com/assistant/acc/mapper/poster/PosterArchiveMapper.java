@@ -25,4 +25,7 @@ public interface PosterArchiveMapper {
                            @Param("visualPrompt") String visualPrompt);
 
     List<PosterArchiveDTO> findPosters(String year, String theme);
+
+    // [추가] 포스터 번호(Integer)로 파일 경로 조회
+    String findFilePathByNo(Integer posterNo);
 }
