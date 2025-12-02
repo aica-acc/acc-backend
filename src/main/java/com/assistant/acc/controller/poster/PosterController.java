@@ -17,14 +17,15 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api") // 기본 경로
-@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:5175"})
+@CrossOrigin(origins = { "http://localhost:5173", "http://localhost:5175" })
 public class PosterController {
 
     private final PosterService posterService;
     private final PromotionAPIService promotionAPIService;
     private final PosterRegenerateService posterRegenerateService;
 
-    public PosterController(PosterService posterService, PromotionAPIService promotionAPIService, PosterRegenerateService posterRegenerateService) {
+    public PosterController(PosterService posterService, PromotionAPIService promotionAPIService,
+            PosterRegenerateService posterRegenerateService) {
         this.posterService = posterService;
         this.promotionAPIService = promotionAPIService;
         this.posterRegenerateService = posterRegenerateService;
@@ -49,11 +50,11 @@ public class PosterController {
     public ResponseEntity<List<Prompt>> generatePrompt(
             @RequestBody Map<String, Object> trendData,
             @RequestParam String promotionType,
-            HttpServletRequest request
-            ) {
+            HttpServletRequest request) {
         // Service가 이제 DTO를 반환
         String m_no = (String) request.getAttribute("m_no");
-        if(m_no == null) m_no = "M000001";
+        if (m_no == null)
+            m_no = "M000001";
         List<Prompt> result = promotionAPIService.generatePrompts(m_no, trendData, promotionType);
         return ResponseEntity.ok(result);
     }
@@ -67,7 +68,8 @@ public class PosterController {
 
     ) {
         String m_no = (String) request.getAttribute("m_no");
-        if(m_no == null) m_no = "M000001";
+        if (m_no == null)
+            m_no = "M000001";
         CreateImageResultResponse result = promotionAPIService.createPosterImages(m_no, trendData, promotionType);
         return ResponseEntity.ok(result);
     }
@@ -90,10 +92,12 @@ public class PosterController {
             HttpServletRequest request) {
 
         String m_no = (String) request.getAttribute("m_no");
-        if(m_no == null) m_no = "M000001";
+        if (m_no == null)
+            m_no = "M000001";
         String visualPrompt = (String) body.get("visual_prompt");
 
-        RegenerateResponseDTO result = posterRegenerateService.regenerated(m_no, filePathNo, visualPrompt, promotionType);
+        RegenerateResponseDTO result = posterRegenerateService.regenerated(m_no, filePathNo, visualPrompt,
+                promotionType);
 
         return ResponseEntity.ok(result);
     }

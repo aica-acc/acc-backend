@@ -12,6 +12,7 @@ import com.assistant.acc.dto.create.prompt.GeneratePromptResponseDto;
 import com.assistant.acc.dto.create.prompt.GeneratePromptOption;
 import com.assistant.acc.dto.create.prompt.SelectedPromptDataDto;
 import com.assistant.acc.mapper.project.ProjectMapper;
+import com.assistant.acc.mapper.project.promotion.GeneratedAssetMapper;
 import com.assistant.acc.mapper.prompt.PromptMapper;
 import com.assistant.acc.service.file.FileStorageService;
 import com.assistant.acc.service.member.UserInputsService;
@@ -29,6 +30,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.File;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -45,16 +47,23 @@ public class PromotionAPIServiceImpl implements PromotionAPIService {
     private final PromotionService promotionService;
     private final ProjectMapper projectMapper;
     private final PromptMapper promptMapper;
+    private final GeneratedAssetMapper generatedAssetMapper;
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
     // 파일 및 경로
     @Value("${python.api.url}")
-    private String pythonApiUrl; // 파이썬 통신용 URI
+    private String pythonApiUrl;
 
     @Value("${files.generated-root}")
-    private String generatedRootDir; // properties 추가
+    private String generatedRootDir;
+
+    @Value("${python.base-dir}")
+    private String pythonBaseDir;
+
+    @Value("${python.mascot-dir}")
+    private String pythonMascotDir;
 
     /**
      * 프롬프트 생성 메서드
@@ -69,7 +78,18 @@ public class PromotionAPIServiceImpl implements PromotionAPIService {
         // 1. 공통 요소 추출
         GenerateElement el = getElement(memberNo);
 
-        // 2. FastAPI에 전달할 DTO 조립
+        // 2. 중복 생성 방지 (타입별 조회)
+        List<Prompt> existingPrompts = promptMapper.selectPromptsByType(
+                el.getUserInputs().getUserInputNo(),
+                promotionType
+        );
+
+        if (existingPrompts != null && !existingPrompts.isEmpty()) {
+            System.out.println("⚠️ [" + promotionType + "] 프롬프트가 이미 존재합니다. 기존 데이터를 반환합니다.");
+            return existingPrompts;
+        }
+
+        // 3. FastAPI에 전달할 DTO 조립
         System.out.println("3. FastAPI에 전달할 DTO 조립");
         GeneratePromptRequestDto requestDto = new GeneratePromptRequestDto();
         requestDto.setTheme(el.getUserInputs().getTheme());
@@ -79,14 +99,19 @@ public class PromotionAPIServiceImpl implements PromotionAPIService {
         requestDto.setPosterTrendReport(trendData);
         requestDto.setStrategyReport(Map.of("strategy", "임시 strategy"));
 
-        // 3. FastAPI 호출
+        // 4. FastAPI 호출
+        String endPoint = "/generate-prompt";
+        if ("mascot".equals(promotionType)) {
+            endPoint = "/generate/mascot/prompt";
+        }
+
         GeneratePromptResponseDto apiResponse = callPython(
-                "/generate-prompt",
+                endPoint,
                 requestDto,
                 GeneratePromptResponseDto.class);
         List<GeneratePromptOption> options = apiResponse.getPromptOptions();
 
-        // 4. prompt 저장
+        // 5. prompt 저장
         List<Prompt> saved = new ArrayList<>();
 
         for (GeneratePromptOption opt : options) {
@@ -100,6 +125,7 @@ public class PromotionAPIServiceImpl implements PromotionAPIService {
                     .userInputNo(el.getUserInputs().getUserInputNo())
                     .visualPrompt(finalPrompt)
                     .styleName(opt.getStyleName())
+                    .promotionType(promotionType)
                     .createdAt(LocalDateTime.now())
                     .build();
 
@@ -162,55 +188,71 @@ public class PromotionAPIServiceImpl implements PromotionAPIService {
     @Override
     @Transactional
     public CreateImageResultResponse createPosterImages(String memberNo, Map<String, Object> trendData,
-            String promotionType) {
+                                                        String promotionType) {
         // 1. 공통 요소 추출
         GenerateElement el = getElement(memberNo);
 
-        // 2. prompt 4개 조회
-        List<Prompt> prompts = promptMapper.selectPrompts(el.getUserInputs().getUserInputNo());
+        // ⭐ 2-1. DB 체크: 이미 저장된 이미지가 있는지 확인
+        if (checkIfImagesExistInDB(el.getProjectNo(), promotionType)) {
+            System.out.println("✅ [DB 체크] " + promotionType + " 이미지가 이미 DB에 존재합니다. 생성을 스킵합니다.");
+            return getExistingImagesFromDB(el.getProjectNo(), promotionType);
+        }
+
+        // ⭐ 2-2. Python 폴더 체크: 생성되었으나 저장 실패한 이미지 확인
+        if (checkIfImagesExistInPythonFolder(promotionType)) {
+            System.out.println("⚠️ [Python 폴더 체크] " + promotionType + " 이미지가 Python 폴더에 존재합니다. Python 호출을 스킵하고 기존 이미지를 사용합니다.");
+            return processPythonExistingImages(memberNo, el, promotionType);
+        }
+
+        // 3. Prompt 조회 (타입별)
+        List<Prompt> prompts = promptMapper.selectPromptsByType(
+                el.getUserInputs().getUserInputNo(),
+                promotionType
+        );
+
         if (prompts == null || prompts.isEmpty()) {
             throw new IllegalStateException("prompt 없음 user_input_no=" + el.getUserInputs().getUserInputNo());
         }
 
+        // 4. Promotion 생성
         Integer promotionNo = promotionService.createPromotion(
                 el.getProjectNo(),
                 prompts.get(0).getPromptNo(),
                 promotionType);
 
-        // 3. Prompt → SelectedPromptDataDto 변환
+        // 5. Prompt → SelectedPromptDataDto 변환
         List<SelectedPromptDataDto> selectedList = new ArrayList<>();
         for (Prompt p : prompts) {
             SelectedPromptDataDto dto = new SelectedPromptDataDto();
             dto.setStyleName(p.getStyleName());
             dto.setVisualPrompt(p.getVisualPrompt());
             dto.setWidth(1024);
-            dto.setHeight(1792);
-            dto.setTextContent(null); // 현재 text_content 없음
+            dto.setHeight("mascot".equals(promotionType) ? 1024 : 1792);
+            dto.setTextContent(null);
             selectedList.add(dto);
         }
 
-        // 6. FastAPI 요청 DTO 만들기
+        // 6. FastAPI 요청 DTO
         CreateImageRequestDto req = new CreateImageRequestDto();
         req.setAnalysisSummary(el.getProposalMetadata());
         req.setPromptOptions(selectedList);
 
-        // 7. FastAPI 호출
-        CreateImageResultResponse result = callPython(
-                "/create-image",
-                req,
-                CreateImageResultResponse.class);
+        // 7. FastAPI 호출 (타입별 엔드포인트)
+        System.out.println("🚀 [Python 호출] " + promotionType + " 이미지 생성 시작...");
+        String endPoint = "mascot".equals(promotionType)
+                ? "/create-mascot-image"
+                : "/create-image";
+
+        CreateImageResultResponse result = callPython(endPoint, req, CreateImageResultResponse.class);
 
         if (result == null || result.getImages() == null) {
             throw new IllegalStateException("이미지 생성 실패 (FastAPI 응답 null)");
         }
 
-        // 6. *** 파일 이동 + DB 저장은 FileStorageService 로 분리 ***
+        // 8. 파일 이동 + DB 저장
         for (int i = 0; i < result.getImages().size(); i++) {
-
             CreateImageResponseDto img = result.getImages().get(i);
-
             String filename = img.getImageUrl().replace("/poster-images/", "");
-
             Integer promptNo = prompts.get(i).getPromptNo();
 
             fileStorageService.saveGeneratedPosterImage(
@@ -218,10 +260,130 @@ public class PromotionAPIServiceImpl implements PromotionAPIService {
                     el.getProjectNo(),
                     filename,
                     promptNo,
-                    promotionNo, // ⭐ promotionNo 넘겨줘야 함
+                    promotionNo,
                     promotionType);
         }
 
         return result;
+    }
+
+    // ============================================
+    // 방어 코드 헬퍼 메서드들
+    // ============================================
+
+    /**
+     * 방어 1: DB에 이미 저장된 이미지가 있는지 확인
+     */
+    private boolean checkIfImagesExistInDB(Integer projectNo, String promotionType) {
+        int count = generatedAssetMapper.countByProjectAndType(projectNo, promotionType);
+        return count >= 4;
+    }
+
+    /**
+     * 방어 2: Python 폴더에 이미 생성된 이미지가 있는지 확인
+     */
+    private boolean checkIfImagesExistInPythonFolder(String promotionType) {
+        String pythonDir;
+        String filePrefix;
+
+        if ("mascot".equals(promotionType)) {
+            pythonDir = pythonMascotDir;
+            filePrefix = "mascot_";
+        } else {
+            pythonDir = pythonBaseDir;
+            filePrefix = "poster_";
+        }
+
+        File dir = new File(pythonDir);
+
+        if (!dir.exists()) {
+            return false;
+        }
+
+        File[] files = dir.listFiles((d, name) ->
+                name.startsWith(filePrefix) && name.endsWith(".png")
+        );
+
+        if (files != null && files.length >= 4) {
+            System.out.println("  📁 Python 폴더에 " + promotionType + " 이미지 " + files.length + "개 발견");
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * DB에서 기존 이미지 정보 조회하여 반환
+     */
+    private CreateImageResultResponse getExistingImagesFromDB(Integer projectNo, String promotionType) {
+        CreateImageResultResponse response = new CreateImageResultResponse();
+        response.setStatus("success");
+        response.setImages(new ArrayList<>());
+        return response;
+    }
+
+    /**
+     * Python 폴더에 있는 이미지를 처리 (DB 저장 재시도)
+     */
+    private CreateImageResultResponse processPythonExistingImages(
+            String memberNo,
+            GenerateElement el,
+            String promotionType) {
+
+        String pythonDir;
+        String filePrefix;
+
+        if ("mascot".equals(promotionType)) {
+            pythonDir = pythonMascotDir;
+            filePrefix = "mascot_";
+        } else {
+            pythonDir = pythonBaseDir;
+            filePrefix = "poster_";
+        }
+
+        File dir = new File(pythonDir);
+        File[] files = dir.listFiles((d, name) ->
+                name.startsWith(filePrefix) && name.endsWith(".png")
+        );
+
+        if (files == null || files.length == 0) {
+            throw new IllegalStateException("Python 폴더에 " + promotionType + " 이미지가 없습니다.");
+        }
+
+        List<Prompt> prompts = promptMapper.selectPromptsByType(
+                el.getUserInputs().getUserInputNo(),
+                promotionType
+        );
+
+        Integer promotionNo = promotionService.createPromotion(
+                el.getProjectNo(),
+                prompts.get(0).getPromptNo(),
+                promotionType);
+
+        List<CreateImageResponseDto> imageResults = new ArrayList<>();
+
+        for (int i = 0; i < Math.min(files.length, prompts.size()); i++) {
+            String filename = files[i].getName();
+            Integer promptNo = prompts.get(i).getPromptNo();
+
+            fileStorageService.saveGeneratedPosterImage(
+                    memberNo,
+                    el.getProjectNo(),
+                    filename,
+                    promptNo,
+                    promotionNo,
+                    promotionType);
+
+            CreateImageResponseDto dto = new CreateImageResponseDto();
+            dto.setFileName(filename);
+            dto.setImageUrl("/poster-images/" + filename);
+            imageResults.add(dto);
+        }
+
+        CreateImageResultResponse response = new CreateImageResultResponse();
+        response.setStatus("success");
+        response.setImages(imageResults);
+
+        return response;
     }
 }

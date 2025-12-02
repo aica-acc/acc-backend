@@ -16,5 +16,6 @@ public class Prompt {
     private  Integer userInputNo;
     private String visualPrompt;
     private String styleName;
+    private String promotionType;
     private LocalDateTime createdAt;
 }

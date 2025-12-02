@@ -19,10 +19,14 @@ public class FileStorageService {
     @Value("${react.base-path}")
     private String baseDir;
 
+    @Value("${python.base-dir}")
+    private String pythonBaseDir;
+
+    @Value("${python.mascot-dir}")
+    private String pythonMascotDir;
+
     private final GeneratedAssetMapper generatedAssetMapper;
     private final GenerateFilePathMapper generateFilePathMapper;
-
-    private final String PYTHON_SAVE_DIR = "C:/final_project/ACC/acc-ai/홍보물/";
 
     public void saveGeneratedPosterImage(
             String memberNo,
@@ -48,8 +52,15 @@ public class FileStorageService {
             dir.mkdirs();   // 구조 전체 자동 생성
         }
 
-        // ⭐ 2. FastAPI가 저장한 기본 폴더 (임시 저장 위치)
-        File src = new File(PYTHON_SAVE_DIR + filename);
+        // ⭐ 2. FastAPI가 저장한 기본 폴더 (타입별 경로)
+        String pythonSourcePath;
+        if ("mascot".equals(promotionType)) {
+            pythonSourcePath = pythonMascotDir + filename;
+        } else {
+            pythonSourcePath = pythonBaseDir + filename;
+        }
+
+        File src = new File(pythonSourcePath);
 
         // ⭐ 3. 우리의 구조로 이동할 대상 위치
         File dest = new File(Paths.get(targetDir, filename).toString());
@@ -68,7 +79,7 @@ public class FileStorageService {
                 .promotionNo(promotionNo)
                 .promptNo(promptNo)
                 .isMain(0)                     // 기본은 0
-                .generateAssetType(promotionType)   // 고정값
+                .generateAssetType(promotionType)   // 타입 저장
                 .createdAt(LocalDateTime.now())
                 .build();
 
@@ -113,7 +124,14 @@ public class FileStorageService {
         }
 
         /* ⭐ (1) Python 생성 폴더에서 새 파일 가져오기 */
-        File src = new File(PYTHON_SAVE_DIR + newFilename);
+        String pythonSourcePath;
+        if ("mascot".equals(promotionType)) {
+            pythonSourcePath = pythonMascotDir + newFilename;
+        } else {
+            pythonSourcePath = pythonBaseDir + newFilename;
+        }
+
+        File src = new File(pythonSourcePath);
 
         if (!src.exists()) {
             System.out.println("⚠ regenerate된 이미지가 Python 폴더에 없음: " + src.getAbsolutePath());
