@@ -4,7 +4,7 @@ import com.assistant.acc.domain.poster.RegenerateResponseDTO;
 import com.assistant.acc.domain.prompt.Prompt;
 import com.assistant.acc.dto.create.poster.CreateImageResultResponse;
 import com.assistant.acc.dto.image.PosterElementDTO;
-import com.assistant.acc.service.poster.generate.PosterAPIService;
+import com.assistant.acc.service.poster.generate.PromotionAPIService;
 import com.assistant.acc.service.poster.PosterService;
 import com.assistant.acc.service.poster.regenerate.PosterRegenerateService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,12 +21,12 @@ import java.util.Map;
 public class PosterController {
 
     private final PosterService posterService;
-    private final PosterAPIService posterAPIService;
+    private final PromotionAPIService promotionAPIService;
     private final PosterRegenerateService posterRegenerateService;
 
-    public PosterController(PosterService posterService, PosterAPIService posterAPIService, PosterRegenerateService posterRegenerateService) {
+    public PosterController(PosterService posterService, PromotionAPIService promotionAPIService, PosterRegenerateService posterRegenerateService) {
         this.posterService = posterService;
-        this.posterAPIService = posterAPIService;
+        this.promotionAPIService = promotionAPIService;
         this.posterRegenerateService = posterRegenerateService;
     }
 
@@ -48,12 +48,13 @@ public class PosterController {
     @PostMapping("/generate-prompt")
     public ResponseEntity<List<Prompt>> generatePrompt(
             @RequestBody Map<String, Object> trendData,
+            @RequestParam String promotionType,
             HttpServletRequest request
             ) {
         // Service가 이제 DTO를 반환
         String m_no = (String) request.getAttribute("m_no");
         if(m_no == null) m_no = "M000001";
-        List<Prompt> result = posterAPIService.generatePrompts(m_no, trendData);
+        List<Prompt> result = promotionAPIService.generatePrompts(m_no, trendData, promotionType);
         return ResponseEntity.ok(result);
     }
 
@@ -61,12 +62,13 @@ public class PosterController {
     @PostMapping("/create-image")
     public ResponseEntity<CreateImageResultResponse> createImage(
             @RequestBody Map<String, Object> trendData,
+            @RequestParam String promotionType,
             HttpServletRequest request
 
     ) {
         String m_no = (String) request.getAttribute("m_no");
         if(m_no == null) m_no = "M000001";
-        CreateImageResultResponse result = posterAPIService.createPosterImages(m_no, trendData);
+        CreateImageResultResponse result = promotionAPIService.createPosterImages(m_no, trendData, promotionType);
         return ResponseEntity.ok(result);
     }
 
@@ -83,6 +85,7 @@ public class PosterController {
     @PostMapping("/posters/{filePathNo}/regenerate")
     public ResponseEntity<RegenerateResponseDTO> regeneratePoster(
             @PathVariable Integer filePathNo,
+            @RequestParam String promotionType,
             @RequestBody Map<String, Object> body,
             HttpServletRequest request) {
 
@@ -90,7 +93,7 @@ public class PosterController {
         if(m_no == null) m_no = "M000001";
         String visualPrompt = (String) body.get("visual_prompt");
 
-        RegenerateResponseDTO result = posterRegenerateService.regenerated(m_no, filePathNo, visualPrompt);
+        RegenerateResponseDTO result = posterRegenerateService.regenerated(m_no, filePathNo, visualPrompt, promotionType);
 
         return ResponseEntity.ok(result);
     }

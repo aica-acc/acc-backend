@@ -9,7 +9,7 @@ import java.util.Map;
 
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class CreatePromptRequestDto {
+public class GeneratePromptRequestDto {
     // p_no를 통해서 user_input 테이블 조회하면 theme 받아 올 수 있음.
     private String theme;
 

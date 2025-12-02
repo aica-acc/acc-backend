@@ -18,7 +18,7 @@ public class PosterRegenerateServiceImpl implements PosterRegenerateService{
     private final RegenerateAssembler assembler;
 
     @Transactional
-    public RegenerateResponseDTO regenerated(String memberNo, Integer filePathNo, String newPrompt) {
+    public RegenerateResponseDTO regenerated(String memberNo, Integer filePathNo, String newPrompt, String promotionType) {
 
         Regenerate regen = factory.create(memberNo, filePathNo, newPrompt);
 
@@ -30,7 +30,7 @@ public class PosterRegenerateServiceImpl implements PosterRegenerateService{
         regen.setNewImageUrl(pythonImage.getImageUrl());
 
         // 3. 파일 overwrite
-        fileService.overwrite(regen);
+        fileService.overwrite(regen, promotionType);
 
         // 4. file_path 업데이트
         dbService.updateFilePath(regen);

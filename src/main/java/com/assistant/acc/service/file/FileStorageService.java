@@ -29,7 +29,8 @@ public class FileStorageService {
             Integer projectNo,
             String filename,
             Integer promptNo,
-            Integer promotionNo
+            Integer promotionNo,
+            String promotionType
     ) {
         // ⭐ 1. React public 폴더의 저장 경로 정의
         String targetDir = Paths.get(
@@ -39,7 +40,7 @@ public class FileStorageService {
                 "promotion",
                 memberNo,
                 projectNo.toString(),
-                "poster"
+                promotionType
         ).toString();
 
         File dir = new File(targetDir);
@@ -67,7 +68,7 @@ public class FileStorageService {
                 .promotionNo(promotionNo)
                 .promptNo(promptNo)
                 .isMain(0)                     // 기본은 0
-                .generateAssetType("포스터")   // 고정값
+                .generateAssetType(promotionType)   // 고정값
                 .createdAt(LocalDateTime.now())
                 .build();
 
@@ -75,7 +76,7 @@ public class FileStorageService {
         Integer generatedAssetNo = asset.getGeneratedAssetNo();
 
         // ⭐ 5. generate_file_path DB 저장
-        String dbPath = "/data/promotion/" + memberNo + "/" + projectNo + "/poster/" + filename;
+        String dbPath = "/data/promotion/" + memberNo + "/" + projectNo + "/" + promotionType + "/" + filename;
 
         GenerateFilePath path = GenerateFilePath.builder()
                 .generatedAssetNo(generatedAssetNo)
@@ -91,7 +92,8 @@ public class FileStorageService {
             String memberNo,
             Integer projectNo,
             String newFilename,
-            String oldFilename
+            String oldFilename,
+            String promotionType
     ) {
 
         String targetDir = Paths.get(
@@ -101,7 +103,7 @@ public class FileStorageService {
                 "promotion",
                 memberNo,
                 projectNo.toString(),
-                "poster"
+                promotionType
         ).toString();
 
         // 경로 보장

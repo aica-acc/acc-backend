@@ -7,9 +7,9 @@ import com.assistant.acc.dto.create.*;
 import com.assistant.acc.dto.create.poster.CreateImageRequestDto;
 import com.assistant.acc.dto.create.poster.CreateImageResponseDto;
 import com.assistant.acc.dto.create.poster.CreateImageResultResponse;
-import com.assistant.acc.dto.create.prompt.CreatePromptRequestDto;
-import com.assistant.acc.dto.create.prompt.CreatePromptResponseDto;
-import com.assistant.acc.dto.create.prompt.PosterPromptOption;
+import com.assistant.acc.dto.create.prompt.GeneratePromptRequestDto;
+import com.assistant.acc.dto.create.prompt.GeneratePromptResponseDto;
+import com.assistant.acc.dto.create.prompt.GeneratePromptOption;
 import com.assistant.acc.dto.create.prompt.SelectedPromptDataDto;
 import com.assistant.acc.mapper.project.ProjectMapper;
 import com.assistant.acc.mapper.prompt.PromptMapper;
@@ -36,7 +36,7 @@ import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
-public class PosterAPIServiceImpl implements PosterAPIService {
+public class PromotionAPIServiceImpl implements PromotionAPIService {
     private final UserInputsService userInputsService;
     private final ProjectService proposalMetadataService;
     private final PromptService promptService;
@@ -51,26 +51,27 @@ public class PosterAPIServiceImpl implements PosterAPIService {
 
     // 파일 및 경로
     @Value("${python.api.url}")
-    private String pythonApiUrl;    // 파이썬 통신용 URI
+    private String pythonApiUrl; // 파이썬 통신용 URI
 
     @Value("${files.generated-root}")
-    private String generatedRootDir;    // properties 추가
+    private String generatedRootDir; // properties 추가
 
     /**
      * 프롬프트 생성 메서드
+     * 
      * @param memberNo
      * @param trendData
      * @return
      */
     @Override
     @Transactional
-    public List<Prompt> generatePrompts(String memberNo, Map<String, Object> trendData) {
+    public List<Prompt> generatePrompts(String memberNo, Map<String, Object> trendData, String promotionType) {
         // 1. 공통 요소 추출
         GenerateElement el = getElement(memberNo);
 
         // 2. FastAPI에 전달할 DTO 조립
         System.out.println("3. FastAPI에 전달할 DTO 조립");
-        CreatePromptRequestDto requestDto = new CreatePromptRequestDto();
+        GeneratePromptRequestDto requestDto = new GeneratePromptRequestDto();
         requestDto.setTheme(el.getUserInputs().getTheme());
         requestDto.setAnalysisSummary(el.getProposalMetadata());
 
@@ -79,22 +80,20 @@ public class PosterAPIServiceImpl implements PosterAPIService {
         requestDto.setStrategyReport(Map.of("strategy", "임시 strategy"));
 
         // 3. FastAPI 호출
-        CreatePromptResponseDto apiResponse = callPython(
+        GeneratePromptResponseDto apiResponse = callPython(
                 "/generate-prompt",
                 requestDto,
-                CreatePromptResponseDto.class
-        );
-        List<PosterPromptOption> options = apiResponse.getPromptOptions();
+                GeneratePromptResponseDto.class);
+        List<GeneratePromptOption> options = apiResponse.getPromptOptions();
 
         // 4. prompt 저장
         List<Prompt> saved = new ArrayList<>();
 
-        for (PosterPromptOption opt : options) {
+        for (GeneratePromptOption opt : options) {
 
-            String finalPrompt =
-                    (opt.getVisualPrompt() != null && !opt.getVisualPrompt().isBlank())
-                            ? opt.getVisualPrompt()
-                            : opt.getVisualPromptForBackground();
+            String finalPrompt = (opt.getVisualPrompt() != null && !opt.getVisualPrompt().isBlank())
+                    ? opt.getVisualPrompt()
+                    : opt.getVisualPromptForBackground();
 
             Prompt prompt = Prompt.builder()
                     .promptNo(null)
@@ -110,11 +109,13 @@ public class PosterAPIServiceImpl implements PosterAPIService {
         return saved;
     }
 
-    private GenerateElement getElement(String memberNo){
+    private GenerateElement getElement(String memberNo) {
         // 프로젝트 번호 로드
         System.out.println("서비스 조회 memberNo" + memberNo);
         Integer pNo = projectMapper.selectLatestProjectNo(memberNo);
-        if(pNo == null) { throw new IllegalStateException("프로젝트가 없습니다. m_no: " + memberNo);}
+        if (pNo == null) {
+            throw new IllegalStateException("프로젝트가 없습니다. m_no: " + memberNo);
+        }
 
         // 1. user_input 조회
         System.out.println("1. user_input 조회");
@@ -129,13 +130,12 @@ public class PosterAPIServiceImpl implements PosterAPIService {
         if (meta == null) {
             throw new IllegalStateException("proposal_metadata 없음 p_no=" + pNo);
         }
-        GenerateElement result = GenerateElement.builder().
-                projectNo(pNo).userInputs(ui).proposalMetadata(meta).build();
+        GenerateElement result = GenerateElement.builder().projectNo(pNo).userInputs(ui).proposalMetadata(meta).build();
 
         return result;
     }
 
-    private <T > T callPython(String endPoint, Object dto, Class<T> responseType) {
+    private <T> T callPython(String endPoint, Object dto, Class<T> responseType) {
         try {
             String url = pythonApiUrl + endPoint;
 
@@ -146,8 +146,7 @@ public class PosterAPIServiceImpl implements PosterAPIService {
 
             HttpEntity<String> httpEntity = new HttpEntity<>(json, headers);
 
-            ResponseEntity<T> response =
-                    restTemplate.postForEntity(url, httpEntity, responseType);
+            ResponseEntity<T> response = restTemplate.postForEntity(url, httpEntity, responseType);
 
             return response.getBody();
 
@@ -162,7 +161,8 @@ public class PosterAPIServiceImpl implements PosterAPIService {
 
     @Override
     @Transactional
-    public CreateImageResultResponse createPosterImages(String memberNo, Map<String, Object> trendData) {
+    public CreateImageResultResponse createPosterImages(String memberNo, Map<String, Object> trendData,
+            String promotionType) {
         // 1. 공통 요소 추출
         GenerateElement el = getElement(memberNo);
 
@@ -175,8 +175,7 @@ public class PosterAPIServiceImpl implements PosterAPIService {
         Integer promotionNo = promotionService.createPromotion(
                 el.getProjectNo(),
                 prompts.get(0).getPromptNo(),
-                "포스터"
-        );
+                promotionType);
 
         // 3. Prompt → SelectedPromptDataDto 변환
         List<SelectedPromptDataDto> selectedList = new ArrayList<>();
@@ -199,8 +198,7 @@ public class PosterAPIServiceImpl implements PosterAPIService {
         CreateImageResultResponse result = callPython(
                 "/create-image",
                 req,
-                CreateImageResultResponse.class
-        );
+                CreateImageResultResponse.class);
 
         if (result == null || result.getImages() == null) {
             throw new IllegalStateException("이미지 생성 실패 (FastAPI 응답 null)");
@@ -220,8 +218,8 @@ public class PosterAPIServiceImpl implements PosterAPIService {
                     el.getProjectNo(),
                     filename,
                     promptNo,
-                    promotionNo     // ⭐ promotionNo 넘겨줘야 함
-            );
+                    promotionNo, // ⭐ promotionNo 넘겨줘야 함
+                    promotionType);
         }
 
         return result;
