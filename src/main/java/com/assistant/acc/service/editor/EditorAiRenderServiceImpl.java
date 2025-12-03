@@ -13,51 +13,98 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Editor → Python AI 서버(Gemini 3 Pro Image) 호출 담당 서비스.
- * DB 저장은 안 하고, 파이썬에서 만들어준 imageUrl 그대로 리턴만 한다.
+ * Editor → Python AI 서버 호출 담당 서비스.
+ * AI 색상 추천(스타일링) 기능: 캔버스 텍스트 객체의 스타일을 추천받아 변경된 canvasData 반환.
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class EditorAiRenderServiceImpl implements EditorAiRenderService {
 
-    // TODO: 필요하면 application.yml로 빼기
-    private static final String PYTHON_AI_RENDER_URL = "http://127.0.0.1:5000/ai/editor/render";
+    // AI 서버 URL: /editor/render 엔드포인트
+    private static final String PYTHON_AI_RENDER_URL = "http://127.0.0.1:5000/editor/render";
 
     @Override
     public EditorAiRenderResponse renderWithAi(EditorAiRenderRequest request) {
 
         try {
+            // RestTemplate 타임아웃 설정 (AI 처리 시간이 오래 걸릴 수 있음)
             RestTemplate restTemplate = new RestTemplate();
+            
+            // 타임아웃 설정 (60초)
+            org.springframework.http.client.SimpleClientHttpRequestFactory factory = 
+                new org.springframework.http.client.SimpleClientHttpRequestFactory();
+            factory.setConnectTimeout(10000); // 10초
+            factory.setReadTimeout(60000); // 60초
+            restTemplate.setRequestFactory(factory);
 
-            // 파이썬 쪽에 넘길 payload (필요하면 키 이름 맞게 조정)
+            // 필수 필드 검증
+            if (request.getBackgroundImage() == null || request.getBackgroundImage().isEmpty()) {
+                EditorAiRenderResponse error = new EditorAiRenderResponse();
+                error.setStatus("error");
+                error.setMessage("backgroundImage가 없습니다.");
+                return error;
+            }
+            
+            if (request.getCanvasJson() == null || request.getCanvasJson().isEmpty()) {
+                EditorAiRenderResponse error = new EditorAiRenderResponse();
+                error.setStatus("error");
+                error.setMessage("canvasJson이 없습니다.");
+                return error;
+            }
+
+            // AI 서버에 넘길 payload
             Map<String, Object> payload = new HashMap<>();
-            payload.put("pNo", request.getPNo());
-            payload.put("layoutType", request.getLayoutType());
             payload.put("backgroundImage", request.getBackgroundImage()); 
             payload.put("canvasJson", request.getCanvasJson()); 
+            payload.put("layoutType", request.getLayoutType() != null ? request.getLayoutType() : "default");
 
-            log.info("🚀 [EditorAiRenderService] call Python AI URL={}, pNo={}, layoutType={}, model={}",
-                    PYTHON_AI_RENDER_URL, request.getPNo(), request.getLayoutType(), request.getModel());
+            log.info("🎨 [EditorAiRenderService] AI 색상 추천 요청 URL={}, layoutType={}",
+                    PYTHON_AI_RENDER_URL, request.getLayoutType());
 
-            ResponseEntity<EditorAiRenderResponse> responseEntity =
+            // AI 서버 응답: { status: "success", updatedCanvas: {...} }
+            ResponseEntity<Map> responseEntity =
                     restTemplate.postForEntity(
                             PYTHON_AI_RENDER_URL,
                             payload,
-                            EditorAiRenderResponse.class
+                            Map.class
                     );
 
-            EditorAiRenderResponse body = responseEntity.getBody();
+            Map<String, Object> responseBody = responseEntity.getBody();
 
-            if (body == null) {
+            if (responseBody == null) {
                 EditorAiRenderResponse error = new EditorAiRenderResponse();
                 error.setStatus("error");
                 error.setMessage("empty response from python ai server");
                 return error;
             }
 
-            return body;
+            // AI 서버 응답을 EditorAiRenderResponse로 변환
+            EditorAiRenderResponse response = new EditorAiRenderResponse();
+            response.setStatus((String) responseBody.get("status"));
+            
+            // updatedCanvas가 null인 경우 처리
+            Object updatedCanvasObj = responseBody.get("updatedCanvas");
+            if (updatedCanvasObj != null && updatedCanvasObj instanceof Map) {
+                response.setUpdatedCanvas((Map<String, Object>) updatedCanvasObj);
+            } else {
+                log.warn("⚠️ [EditorAiRenderService] updatedCanvas가 null이거나 Map이 아닙니다: {}", updatedCanvasObj);
+                response.setUpdatedCanvas(null);
+            }
+            
+            if (response.getStatus() == null || !response.getStatus().equals("success")) {
+                response.setMessage((String) responseBody.getOrDefault("message", "AI 서버 오류"));
+            }
 
+            log.info("✅ [EditorAiRenderService] AI 색상 추천 완료, status={}", response.getStatus());
+            return response;
+
+        } catch (org.springframework.web.client.ResourceAccessException e) {
+            log.error("❌ [EditorAiRenderService] AI 서버 연결 실패 (타임아웃 또는 네트워크 오류)", e);
+            EditorAiRenderResponse error = new EditorAiRenderResponse();
+            error.setStatus("error");
+            error.setMessage("AI 서버 연결 실패: " + e.getMessage());
+            return error;
         } catch (Exception e) {
             log.error("❌ [EditorAiRenderService] renderWithAi error", e);
             EditorAiRenderResponse error = new EditorAiRenderResponse();
