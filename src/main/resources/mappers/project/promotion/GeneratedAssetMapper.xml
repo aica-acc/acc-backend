@@ -50,7 +50,7 @@
         AND ga.generate_asset_type = #{type}
     </select>
 
-    <select id="selectByProjectAndType" resultMap="GeneratedAssetMap">
+    <select id="selectByProjectAndType" resultMap="AssetMap">
         SELECT ga.*
         FROM generated_asset ga
         JOIN promotion p ON ga.promotion_no = p.promotion_no

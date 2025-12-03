@@ -2,6 +2,7 @@ package com.assistant.acc.service.poster.generate;
 
 import com.assistant.acc.domain.member.UserInputs;
 import com.assistant.acc.domain.project.ProposalMetadata;
+import com.assistant.acc.domain.project.promotion.GeneratedAsset;
 import com.assistant.acc.domain.prompt.Prompt;
 import com.assistant.acc.dto.create.*;
 import com.assistant.acc.dto.create.poster.CreateImageRequestDto;
@@ -67,11 +68,12 @@ public class PromotionAPIServiceImpl implements PromotionAPIService {
 
     /**
      * 프롬프트 생성 메서드
-     * 
+     *
      * @param memberNo
      * @param trendData
      * @return
      */
+
     @Override
     @Transactional
     public List<Prompt> generatePrompts(String memberNo, Map<String, Object> trendData, String promotionType) {
@@ -81,8 +83,7 @@ public class PromotionAPIServiceImpl implements PromotionAPIService {
         // 2. 중복 생성 방지 (타입별 조회)
         List<Prompt> existingPrompts = promptMapper.selectPromptsByType(
                 el.getUserInputs().getUserInputNo(),
-                promotionType
-        );
+                promotionType);
 
         if (existingPrompts != null && !existingPrompts.isEmpty()) {
             System.out.println("⚠️ [" + promotionType + "] 프롬프트가 이미 존재합니다. 기존 데이터를 반환합니다.");
@@ -194,21 +195,30 @@ public class PromotionAPIServiceImpl implements PromotionAPIService {
 
         // ⭐ 2-1. DB 체크: 이미 저장된 이미지가 있는지 확인
         if (checkIfImagesExistInDB(el.getProjectNo(), promotionType)) {
-            System.out.println("✅ [DB 체크] " + promotionType + " 이미지가 이미 DB에 존재합니다. 생성을 스킵합니다.");
-            return getExistingImagesFromDB(el.getProjectNo(), promotionType);
+            System.out.println("✅ [DB 체크] DB에 " + promotionType + " 이미지 메타데이터가 존재합니다.");
+
+            // 🔍 FileStorageService에 위임
+            if (fileStorageService.checkFilesExistInReactPublic(memberNo, el.getProjectNo(), promotionType)) {
+                System.out.println("✅ [파일 시스템 체크] React public 폴더에 파일이 존재합니다. 생성을 스킵합니다.");
+                return getExistingImagesFromDB(el.getProjectNo(), promotionType);
+            } else {
+                System.out.println("⚠️ [파일 시스템 체크] React public 폴더에 파일이 없습니다. 파일만 복사합니다.");
+                fileStorageService.copyExistingFilesToReact(memberNo, el.getProjectNo(), promotionType);
+                return getExistingImagesFromDB(el.getProjectNo(), promotionType);
+            }
         }
 
         // ⭐ 2-2. Python 폴더 체크: 생성되었으나 저장 실패한 이미지 확인
         if (checkIfImagesExistInPythonFolder(promotionType)) {
-            System.out.println("⚠️ [Python 폴더 체크] " + promotionType + " 이미지가 Python 폴더에 존재합니다. Python 호출을 스킵하고 기존 이미지를 사용합니다.");
+            System.out.println(
+                    "⚠️ [Python 폴더 체크] " + promotionType + " 이미지가 Python 폴더에 존재합니다. Python 호출을 스킵하고 기존 이미지를 사용합니다.");
             return processPythonExistingImages(memberNo, el, promotionType);
         }
 
         // 3. Prompt 조회 (타입별)
         List<Prompt> prompts = promptMapper.selectPromptsByType(
                 el.getUserInputs().getUserInputNo(),
-                promotionType
-        );
+                promotionType);
 
         if (prompts == null || prompts.isEmpty()) {
             throw new IllegalStateException("prompt 없음 user_input_no=" + el.getUserInputs().getUserInputNo());
@@ -300,9 +310,7 @@ public class PromotionAPIServiceImpl implements PromotionAPIService {
             return false;
         }
 
-        File[] files = dir.listFiles((d, name) ->
-                name.startsWith(filePrefix) && name.endsWith(".png")
-        );
+        File[] files = dir.listFiles((d, name) -> name.startsWith(filePrefix) && name.endsWith(".png"));
 
         if (files != null && files.length >= 4) {
             System.out.println("  📁 Python 폴더에 " + promotionType + " 이미지 " + files.length + "개 발견");
@@ -342,9 +350,7 @@ public class PromotionAPIServiceImpl implements PromotionAPIService {
         }
 
         File dir = new File(pythonDir);
-        File[] files = dir.listFiles((d, name) ->
-                name.startsWith(filePrefix) && name.endsWith(".png")
-        );
+        File[] files = dir.listFiles((d, name) -> name.startsWith(filePrefix) && name.endsWith(".png"));
 
         if (files == null || files.length == 0) {
             throw new IllegalStateException("Python 폴더에 " + promotionType + " 이미지가 없습니다.");
@@ -352,8 +358,7 @@ public class PromotionAPIServiceImpl implements PromotionAPIService {
 
         List<Prompt> prompts = promptMapper.selectPromptsByType(
                 el.getUserInputs().getUserInputNo(),
-                promotionType
-        );
+                promotionType);
 
         Integer promotionNo = promotionService.createPromotion(
                 el.getProjectNo(),
