@@ -102,23 +102,26 @@ public class EditorController {
         }
 
     // ==============================
-    // 3) AI 포스터 재렌더링
+    // 3) AI 색상 추천 (스타일링)
     // ==============================
     /**
-     * ✨ 에디터 캔버스를 기반으로 AI 이미지 모델로 포스터 재렌더링
+     * 🎨 AI를 통한 캔버스 텍스트 스타일 추천 (색상, 폰트 등)
      *
      * FE:
-     *   - Fabric 캔버스 → toDataURL() or PNG → EditorAiRenderRequest.canvasImage 등에 담아서 전송
+     *   - backgroundImageUrl: 배경 이미지 URL
+     *   - canvasJson: 현재 캔버스 데이터 (Fabric.js JSON)
+     *   - layoutType: 레이아웃 타입 (카테고리명)
      *
      * BE:
-     *   - editorAiRenderService.renderWithAi(...) 에서 실제 모델 호출/저장 처리
+     *   - AI 서버(/editor/render)로 요청 전달
+     *   - 변경된 canvasData 반환 (변경 가능한 스타일 필드만 수정됨)
      */
     @PostMapping("/ai-render")
     public ResponseEntity<EditorAiRenderResponse> renderWithAi(
             @RequestBody EditorAiRenderRequest request
     ) {
-        log.info("✨ [EditorController] /ai-render pNo={}, layoutType={}, model={}",
-                request.getPNo(), request.getLayoutType(), request.getModel());
+        log.info("🎨 [EditorController] /ai-render layoutType={}",
+                request.getLayoutType());
 
         EditorAiRenderResponse res = editorAiRenderService.renderWithAi(request);
         return ResponseEntity.ok(res);

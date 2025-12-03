@@ -42,4 +42,22 @@
         DELETE FROM generated_asset WHERE generated_asset_no = #{generatedAssetNo}
     </delete>
 
+    <select id="countByProjectAndType" resultType="int">
+        SELECT COUNT(*)
+        FROM generated_asset ga
+        JOIN promotion p ON ga.promotion_no = p.promotion_no
+        WHERE p.p_no = #{projectNo}
+        AND ga.generate_asset_type = #{type}
+    </select>
+
+    <select id="selectByProjectAndType" resultMap="AssetMap">
+        SELECT ga.*
+        FROM generated_asset ga
+        JOIN promotion p ON ga.promotion_no = p.promotion_no
+        WHERE p.p_no = #{projectNo}
+        AND ga.generate_asset_type = #{type}
+        ORDER BY ga.created_at DESC
+        LIMIT 4
+    </select>
+
 </mapper>

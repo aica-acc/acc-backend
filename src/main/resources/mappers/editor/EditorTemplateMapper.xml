@@ -39,6 +39,7 @@
         FROM editor_template
         WHERE p_no = #{pNo}
         ORDER BY updated_at DESC, created_at DESC
+        LIMIT 1
     </select>
 
 </mapper>

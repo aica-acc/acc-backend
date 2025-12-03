@@ -10,7 +10,7 @@ import java.util.List;
 
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class CreatePromptResponseDto {
+public class GeneratePromptResponseDto {
     private String status;  // "success"
 
     @JsonProperty("prompt_options_data")
@@ -26,7 +26,7 @@ public class CreatePromptResponseDto {
 
     // 👉 사용 편하게: 바로 List만 뽑는 헬퍼 메서드
     @JsonIgnore
-    public List<PosterPromptOption> getPromptOptions() {
+    public List<GeneratePromptOption> getPromptOptions() {
         if (promptOptionsData == null ||
                 promptOptionsData.getMasterPrompt() == null ||
                 promptOptionsData.getMasterPrompt().getPromptOptions() == null) {
