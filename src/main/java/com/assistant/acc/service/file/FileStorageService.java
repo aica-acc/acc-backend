@@ -24,13 +24,17 @@ public class FileStorageService {
     private String baseDir;
 
     @Value("${python.base-dir}")
-    private String pythonBaseDir;
-
-    @Value("${python.mascot-dir}")
-    private String pythonMascotDir;
+    private String pythonPromotionBaseDir;
 
     private final GeneratedAssetMapper generatedAssetMapper;
     private final GenerateFilePathMapper generateFilePathMapper;
+
+    /**
+     * 프로모션 타입에 따른 Python 원본 경로 생성
+     */
+    private String getPythonSourceDir(String promotionType) {
+        return Paths.get(pythonPromotionBaseDir, promotionType).toString();
+    }
 
     public void saveGeneratedPosterImage(
             String memberNo,
@@ -55,12 +59,8 @@ public class FileStorageService {
         }
 
         // ⭐ 2. FastAPI가 저장한 기본 폴더 (타입별 경로)
-        String pythonSourcePath;
-        if ("mascot".equals(promotionType)) {
-            pythonSourcePath = pythonMascotDir + File.separator + filename;
-        } else {
-            pythonSourcePath = pythonBaseDir + File.separator + filename;
-        }
+        String pythonSourceDir = getPythonSourceDir(promotionType);
+        String pythonSourcePath = Paths.get(pythonSourceDir, filename).toString();
 
         File src = new File(pythonSourcePath);
         File dest = new File(Paths.get(targetDir, filename).toString());
@@ -140,12 +140,8 @@ public class FileStorageService {
         }
 
         /* ⭐ (1) Python 생성 폴더에서 새 파일 가져오기 */
-        String pythonSourcePath;
-        if ("mascot".equals(promotionType)) {
-            pythonSourcePath = pythonMascotDir + File.separator + newFilename;
-        } else {
-            pythonSourcePath = pythonBaseDir + File.separator + newFilename;
-        }
+        String pythonSourceDir = getPythonSourceDir(promotionType);
+        String pythonSourcePath = Paths.get(pythonSourceDir, newFilename).toString();
 
         File src = new File(pythonSourcePath);
 
@@ -226,8 +222,8 @@ public class FileStorageService {
      * Python 폴더에서 React public으로 파일만 복사 (DB 저장 없음)
      */
     public void copyExistingFilesToReact(String memberNo, Integer projectNo, String promotionType) {
-        String pythonDir = "mascot".equals(promotionType) ? pythonMascotDir : pythonBaseDir;
-        String filePrefix = "mascot".equals(promotionType) ? "mascot_" : "poster_";
+        String pythonDir = getPythonSourceDir(promotionType);
+        String filePrefix = promotionType + "_";
 
         File dir = new File(pythonDir);
         File[] files = dir.listFiles((d, name) ->
@@ -268,8 +264,8 @@ public class FileStorageService {
             dir.mkdirs();
         }
 
-        String pythonSourcePath = ("mascot".equals(promotionType) ? pythonMascotDir : pythonBaseDir)
-                + File.separator + filename;
+        String pythonSourceDir = getPythonSourceDir(promotionType);
+        String pythonSourcePath = Paths.get(pythonSourceDir, filename).toString();
 
         File src = new File(pythonSourcePath);
         File dest = new File(Paths.get(targetDir, filename).toString());
@@ -289,5 +285,50 @@ public class FileStorageService {
         } catch (IOException e) {
             throw new RuntimeException("파일 복사 실패: " + filename, e);
         }
+    }
+
+    /**
+     * Python 폴더에 이미 생성된 이미지가 있는지 확인
+     */
+    public boolean checkIfImagesExistInPythonFolder(String promotionType) {
+        String pythonDir = getPythonSourceDir(promotionType);
+        String filePrefix = promotionType + "_";
+
+        File dir = new File(pythonDir);
+
+        if (!dir.exists()) {
+            return false;
+        }
+
+        File[] files = dir.listFiles((d, name) -> name.startsWith(filePrefix) && name.endsWith(".png"));
+
+        if (files != null && files.length >= 4) {
+            System.out.println("  📁 Python 폴더에 " + promotionType + " 이미지 " + files.length + "개 발견");
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Python 폴더에서 파일 목록 가져오기
+     */
+    public File[] getPythonFolderImages(String promotionType) {
+        String pythonDir = getPythonSourceDir(promotionType);
+        String filePrefix = promotionType + "_";
+
+        File dir = new File(pythonDir);
+
+        if (!dir.exists()) {
+            throw new IllegalStateException("Python 폴더가 존재하지 않습니다: " + pythonDir);
+        }
+
+        File[] files = dir.listFiles((d, name) -> name.startsWith(filePrefix) && name.endsWith(".png"));
+
+        if (files == null || files.length == 0) {
+            throw new IllegalStateException("Python 폴더에 " + promotionType + " 이미지가 없습니다.");
+        }
+
+        return files;
     }
 }
