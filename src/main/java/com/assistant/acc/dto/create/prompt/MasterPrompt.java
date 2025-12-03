@@ -9,5 +9,5 @@ import java.util.List;
 @Data
 public class MasterPrompt {
     @JsonProperty("prompt_options")
-    private List<PosterPromptOption> promptOptions;
+    private List<GeneratePromptOption> promptOptions;
 }

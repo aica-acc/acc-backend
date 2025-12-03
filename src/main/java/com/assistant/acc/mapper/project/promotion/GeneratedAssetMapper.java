@@ -17,4 +17,15 @@ public interface GeneratedAssetMapper {
     int AssetUpdate(GeneratedAsset asset);
 
     int AssetDelete(@Param("generatedAssetNo") Integer generatedAssetNo);
+
+    // 프로젝트와 타입으로 갯수 조회
+    int countByProjectAndType(
+            @Param("projectNo") Integer projectNo,
+            @Param("type") String type
+    );
+    // 프로젝트와 타입으로 리스트 조회
+    List<GeneratedAsset> selectByProjectAndType(
+            @Param("projectNo") Integer projectNo,
+            @Param("type") String type
+    );
 }
