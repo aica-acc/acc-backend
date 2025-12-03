@@ -2,8 +2,6 @@ package com.assistant.acc.service.poster.generate;
 
 import com.assistant.acc.domain.member.UserInputs;
 import com.assistant.acc.domain.project.ProposalMetadata;
-import com.assistant.acc.domain.project.promotion.GeneratedAsset;
-import com.assistant.acc.domain.prompt.Prompt;
 import com.assistant.acc.dto.create.*;
 import com.assistant.acc.dto.create.poster.CreateImageRequestDto;
 import com.assistant.acc.dto.create.poster.CreateImageResponseDto;
@@ -12,6 +10,7 @@ import com.assistant.acc.dto.create.prompt.GeneratePromptRequestDto;
 import com.assistant.acc.dto.create.prompt.GeneratePromptResponseDto;
 import com.assistant.acc.dto.create.prompt.GeneratePromptOption;
 import com.assistant.acc.dto.create.prompt.SelectedPromptDataDto;
+import com.assistant.acc.domain.prompt.Prompt;
 import com.assistant.acc.mapper.project.ProjectMapper;
 import com.assistant.acc.mapper.project.promotion.GeneratedAssetMapper;
 import com.assistant.acc.mapper.prompt.PromptMapper;
