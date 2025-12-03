@@ -17,6 +17,9 @@ public class CreateImageResponseDto {
     @JsonProperty("image_url")
     private String imageUrl;
 
+    @JsonProperty("file_name")
+    private String fileName;
+
     @JsonProperty("visual_prompt")
     private String visualPrompt;
 

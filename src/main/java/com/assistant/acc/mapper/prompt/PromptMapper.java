@@ -13,6 +13,10 @@ public interface PromptMapper {
     // Read
     Prompt selectPrompt(@Param("promptNo") Integer promptNo);
     List<Prompt> selectPrompts(@Param("userInputNo") Integer userInputNo);
+    List<Prompt> selectPromptsByType(
+            @Param("userInputNo") Integer userInputNo,
+            @Param("promotionType") String promotionType);
+
     // Update
     int updatePrompt(Prompt prompt);
     // Delete

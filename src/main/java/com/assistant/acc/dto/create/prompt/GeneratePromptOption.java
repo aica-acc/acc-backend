@@ -7,7 +7,7 @@ import lombok.Data;
 
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class PosterPromptOption {
+public class GeneratePromptOption {
 
     @JsonProperty("style_name")
     private String styleName;

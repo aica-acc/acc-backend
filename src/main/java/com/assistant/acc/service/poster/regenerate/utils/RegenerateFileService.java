@@ -11,7 +11,7 @@ public class RegenerateFileService {
 
     private final FileStorageService fileStorageService;
 
-    public void overwrite(Regenerate regen) {
+    public void overwrite(Regenerate regen, String promotionType) {
 
         String newFileName = extractFileName(regen.getNewImageUrl());
         regen.setNewFileName(newFileName);
@@ -20,12 +20,13 @@ public class RegenerateFileService {
                 regen.getMemberNo(),
                 regen.getProjectNo(),
                 newFileName,
-                regen.getOldFileName()
+                regen.getOldFileName(),
+                promotionType
         );
 
         String newPath = "/data/promotion/" +
                 regen.getMemberNo() + "/" +
-                regen.getProjectNo() + "/poster/" +
+                regen.getProjectNo() + "/"+ promotionType + "/" +
                 newFileName;
 
         regen.setNewFilePath(newPath);

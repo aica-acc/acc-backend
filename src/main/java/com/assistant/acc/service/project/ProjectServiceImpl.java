@@ -33,7 +33,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.extern.slf4j.Slf4j;
 
-
 @Slf4j
 @Service
 public class ProjectServiceImpl implements ProjectService {
@@ -44,7 +43,7 @@ public class ProjectServiceImpl implements ProjectService {
 
     // 고정 회원 ID
     private static final String DEFAULT_MEMBER_NO = "M000001";
-            
+
     public ProjectServiceImpl(RestTemplate restTemplate, ProjectMapper projectMapper, ObjectMapper objectMapper) {
         this.restTemplate = restTemplate;
         this.objectMapper = objectMapper;
@@ -53,7 +52,7 @@ public class ProjectServiceImpl implements ProjectService {
 
     /**
      * 'PosterService'에서 이동해 온 '프로젝트 생성 및 입력 저장' 로직
-     */ 
+     */
     @Override
     @Transactional
     public Project createProjectAndSaveInput(String theme, String keywords, String title, String memeberId) {
@@ -86,7 +85,7 @@ public class ProjectServiceImpl implements ProjectService {
         projectMapper.insertProposalMetadata(metadata);
         System.out.println("Python 분석 결과 DB 저장 완료 (ProjectService)");
     }
-          
+
     @Override
     public ProposalMetadata getLatestProposalMetadata() {
 
@@ -116,14 +115,19 @@ public class ProjectServiceImpl implements ProjectService {
     public ProposalMetadata analyzeProposal(
             MultipartFile file, String theme, String keywords, String title) throws IOException {
 
+        System.out.println("\n========================================");
+        System.out.println("[Service] analyzeProposal 시작");
+        System.out.println("========================================");
+
         // 1) 새로운 Project 생성
+        System.out.println("[Service - Step 1] 프로젝트 생성 시작...");
         String memberId = DEFAULT_MEMBER_NO;
         Project project = createProjectAndSaveInput(theme, keywords, title, memberId);
         Integer pNo = project.getProjectNo();
-
-        System.out.println("📌 새 프로젝트 생성 완료, pNo = " + pNo);
+        System.out.println("[Service - Step 1] ✅ 프로젝트 생성 완료, pNo = " + pNo);
 
         // 2) Python 서버 호출 준비
+        System.out.println("[Service - Step 2] Python 요청 준비 중...");
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
         body.add("file", new ByteArrayResource(file.getBytes()) {
             @Override
@@ -139,21 +143,24 @@ public class ProjectServiceImpl implements ProjectService {
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
 
         HttpEntity<MultiValueMap<String, Object>> request = new HttpEntity<>(body, headers);
+        System.out.println("[Service - Step 2] ✅ 요청 데이터 준비 완료");
 
         // 2-2) Python 분석 요청
-        
+        System.out.println("[Service - Step 3] Python 서버 호출 시작...");
+        System.out.println("  URL: http://localhost:5000/analyze/proposal");
+
         ResponseEntity<String> response = restTemplate.postForEntity(
                 "http://localhost:5000/analyze/proposal",
                 request,
-                String.class
-        );
+                String.class);
 
-        System.out.println("📥 Python Response Body:");
+        System.out.println("[Service - Step 3] ✅ Python 응답 수신 성공!");
+        System.out.println("  Status Code: " + response.getStatusCode());
+        System.out.println("  Response Body:");
         System.out.println(response.getBody());
 
         // 3) Python 응답을 DTO로 변환
-        ProposalAnalyzeResponse parsed =
-                objectMapper.readValue(response.getBody(), ProposalAnalyzeResponse.class);
+        ProposalAnalyzeResponse parsed = objectMapper.readValue(response.getBody(), ProposalAnalyzeResponse.class);
 
         if (!"success".equals(parsed.getStatus())) {
             throw new IOException("AI 분석 실패");
@@ -180,31 +187,33 @@ public class ProjectServiceImpl implements ProjectService {
         metadata.setFestivalEndDate(parsedDates.get(1));
 
         metadata.setProgramName(
-                analysis.getPrograms() != null ? analysis.getPrograms().toString() : "[]"
-        );
+                analysis.getPrograms() != null ? analysis.getPrograms().toString() : "[]");
         metadata.setEventName(
-                analysis.getEvents() != null ? analysis.getEvents().toString() : "[]"
-        );
+                analysis.getEvents() != null ? analysis.getEvents().toString() : "[]");
         metadata.setVisualKeywords(
-                analysis.getVisualKeywords() != null ? analysis.getVisualKeywords().toString() : "[]"
-        );
+                analysis.getVisualKeywords() != null ? analysis.getVisualKeywords().toString() : "[]");
 
         metadata.setCreateAt(new Date());
 
         // 5) 저장 시도 (❗ try/catch 추가)
+        System.out.println("[Service - Step 6] DB 저장 시작...");
         try {
             saveProposalMetadata(metadata);
-            System.out.println("📌 기획서 분석 결과 저장 완료");
+            System.out.println("[Service - Step 6] ✅ DB 저장 성공!");
         } catch (Exception e) {
-            System.out.println("❌ ProposalMetadata 저장 실패");
-            e.printStackTrace(); // 실제 오류 콘솔에 출력
-            throw e; // 컨트롤러로 예외 전달 → 프론트에 500 반환
+            System.err.println("[Service - Step 6] ❌ DB 저장 실패!");
+            System.err.println("  에러 타입: " + e.getClass().getName());
+            System.err.println("  에러 메시지: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
         }
 
+        System.out.println("[Service] ✅ analyzeProposal 완료!");
+        System.out.println("========================================\n");
         return metadata;
     }
-    
-     /**
+
+    /**
      * 날짜 파싱 (private 헬퍼)
      */
     private List<Date> parseDateRange(String rawDateText) {
@@ -228,9 +237,9 @@ public class ProjectServiceImpl implements ProjectService {
             // 3. 시작 날짜 정제
             String startDateString = dates[0]
                     .replaceAll("\\(.*?\\)", "") // (요일) 제거
-                    .replaceAll("/.*", "")     // " / n일간" 제거
-                    .trim()                   // 공백 제거
-                    .replaceFirst("\\.$", "");  // 마지막 점 제거
+                    .replaceAll("/.*", "") // " / n일간" 제거
+                    .trim() // 공백 제거
+                    .replaceFirst("\\.$", ""); // 마지막 점 제거
 
             parsedStartDate = formatter.parse(startDateString);
 
@@ -240,7 +249,7 @@ public class ProjectServiceImpl implements ProjectService {
                         .replaceAll("\\(.*?\\)", "")
                         .replaceAll("/.*", "")
                         .trim()
-                        .replaceFirst("\\.$", ""); //  마지막 점 제거
+                        .replaceFirst("\\.$", ""); // 마지막 점 제거
 
                 // 6. 연도 자동 추가 로직 (12.25 -> 2025.12.25)
                 if (endDateString.indexOf('.') == endDateString.lastIndexOf('.')) {
@@ -255,7 +264,7 @@ public class ProjectServiceImpl implements ProjectService {
         } catch (ParseException | ArrayIndexOutOfBoundsException e) {
             System.err.println("날짜 파싱 실패: " + rawDateText + " | " + e.getMessage());
         }
-        //7 - DB 오류 방지 코드
+        // 7 - DB 오류 방지 코드
         if (parsedStartDate == null) {
             parsedStartDate = new Date();
         }
@@ -265,7 +274,8 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    public Map<String, Object> analyzeTotalTrend(String keyword, String title, String festivalStartDate) throws IOException {
+    public Map<String, Object> analyzeTotalTrend(String keyword, String title, String festivalStartDate)
+            throws IOException {
 
         log.info("📡 [ServiceImpl] Python 트렌드 요청: keyword={}, title={}", keyword, title);
 
@@ -281,8 +291,7 @@ public class ProjectServiceImpl implements ProjectService {
             headers.setContentType(MediaType.MULTIPART_FORM_DATA);
 
             // 3️⃣ HttpEntity 생성
-            HttpEntity<MultiValueMap<String, Object>> requestEntity =
-                    new HttpEntity<>(formData, headers);
+            HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(formData, headers);
 
             // 4️⃣ Python FastAPI 호출
             String pythonUrl = "http://localhost:5000/analyze/total_trend";
@@ -290,8 +299,7 @@ public class ProjectServiceImpl implements ProjectService {
             Map<String, Object> result = restTemplate.postForObject(
                     pythonUrl,
                     requestEntity,
-                    Map.class
-            );
+                    Map.class);
 
             log.info("✔ Python 응답 수신: {}", result);
             return result;
@@ -301,10 +309,10 @@ public class ProjectServiceImpl implements ProjectService {
 
             return Map.of(
                     "error", "Python 서버 요청 실패",
-                    "details", e.getMessage()
-            );
+                    "details", e.getMessage());
         }
     }
+
     @Override
     public RegionTrendResponseDTO analyzeRegionTrend(String m_no, String festivalStartDate) {
         Integer pNo = projectMapper.selectLatestProjectNo(m_no);
@@ -357,8 +365,7 @@ public class ProjectServiceImpl implements ProjectService {
             ResponseEntity<RegionTrendResponseDTO> response = restTemplate.postForEntity(
                     pythonUrl,
                     requestEntity,
-                    RegionTrendResponseDTO.class
-            );
+                    RegionTrendResponseDTO.class);
             log.info("✔ Python 지역 트렌드 분석 성공");
             return response.getBody();
 
@@ -368,4 +375,4 @@ public class ProjectServiceImpl implements ProjectService {
         }
     }
 
-}    
+}
