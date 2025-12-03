@@ -59,12 +59,6 @@ public class PromotionAPIServiceImpl implements PromotionAPIService {
     @Value("${files.generated-root}")
     private String generatedRootDir;
 
-    @Value("${python.base-dir}")
-    private String pythonBaseDir;
-
-    @Value("${python.mascot-dir}")
-    private String pythonMascotDir;
-
     /**
      * 프롬프트 생성 메서드
      *
@@ -72,7 +66,6 @@ public class PromotionAPIServiceImpl implements PromotionAPIService {
      * @param trendData
      * @return
      */
-
     @Override
     @Transactional
     public List<Prompt> generatePrompts(String memberNo, Map<String, Object> trendData, String promotionType) {
@@ -184,7 +177,6 @@ public class PromotionAPIServiceImpl implements PromotionAPIService {
     /**
      * 이미지 생성
      */
-
     @Override
     @Transactional
     public CreateImageResultResponse createPosterImages(String memberNo, Map<String, Object> trendData,
@@ -207,8 +199,8 @@ public class PromotionAPIServiceImpl implements PromotionAPIService {
             }
         }
 
-        // ⭐ 2-2. Python 폴더 체크: 생성되었으나 저장 실패한 이미지 확인
-        if (checkIfImagesExistInPythonFolder(promotionType)) {
+        // ⭐ 2-2. Python 폴더 체크: 생성되었으나 저장 실패한 이미지 확인 (FileStorageService에 위임)
+        if (fileStorageService.checkIfImagesExistInPythonFolder(promotionType)) {
             System.out.println(
                     "⚠️ [Python 폴더 체크] " + promotionType + " 이미지가 Python 폴더에 존재합니다. Python 호출을 스킵하고 기존 이미지를 사용합니다.");
             return processPythonExistingImages(memberNo, el, promotionType);
@@ -289,37 +281,6 @@ public class PromotionAPIServiceImpl implements PromotionAPIService {
     }
 
     /**
-     * 방어 2: Python 폴더에 이미 생성된 이미지가 있는지 확인
-     */
-    private boolean checkIfImagesExistInPythonFolder(String promotionType) {
-        String pythonDir;
-        String filePrefix;
-
-        if ("mascot".equals(promotionType)) {
-            pythonDir = pythonMascotDir;
-            filePrefix = "mascot_";
-        } else {
-            pythonDir = pythonBaseDir;
-            filePrefix = "poster_";
-        }
-
-        File dir = new File(pythonDir);
-
-        if (!dir.exists()) {
-            return false;
-        }
-
-        File[] files = dir.listFiles((d, name) -> name.startsWith(filePrefix) && name.endsWith(".png"));
-
-        if (files != null && files.length >= 4) {
-            System.out.println("  📁 Python 폴더에 " + promotionType + " 이미지 " + files.length + "개 발견");
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
      * DB에서 기존 이미지 정보 조회하여 반환
      */
     private CreateImageResultResponse getExistingImagesFromDB(Integer projectNo, String promotionType) {
@@ -331,29 +292,15 @@ public class PromotionAPIServiceImpl implements PromotionAPIService {
 
     /**
      * Python 폴더에 있는 이미지를 처리 (DB 저장 재시도)
+     * FileStorageService에서 파일 목록 가져오기
      */
     private CreateImageResultResponse processPythonExistingImages(
             String memberNo,
             GenerateElement el,
             String promotionType) {
 
-        String pythonDir;
-        String filePrefix;
-
-        if ("mascot".equals(promotionType)) {
-            pythonDir = pythonMascotDir;
-            filePrefix = "mascot_";
-        } else {
-            pythonDir = pythonBaseDir;
-            filePrefix = "poster_";
-        }
-
-        File dir = new File(pythonDir);
-        File[] files = dir.listFiles((d, name) -> name.startsWith(filePrefix) && name.endsWith(".png"));
-
-        if (files == null || files.length == 0) {
-            throw new IllegalStateException("Python 폴더에 " + promotionType + " 이미지가 없습니다.");
-        }
+        // FileStorageService에서 파일 목록 가져오기
+        File[] files = fileStorageService.getPythonFolderImages(promotionType);
 
         List<Prompt> prompts = promptMapper.selectPromptsByType(
                 el.getUserInputs().getUserInputNo(),
