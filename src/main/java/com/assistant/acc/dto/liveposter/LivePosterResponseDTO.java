@@ -1,6 +1,6 @@
 package com.assistant.acc.dto.liveposter;
 
-import com.fasterxml.jackson.annotation.JsonProperty; // 👈 이 import가 핵심입니다!
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 @Data
