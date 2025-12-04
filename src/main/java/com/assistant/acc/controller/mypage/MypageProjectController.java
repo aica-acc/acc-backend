@@ -38,7 +38,7 @@ public class MypageProjectController {
     @Data
     public static class PromotionAssetDTO {
         private Integer assetId;   // promotion_path_no
-        private String typeCode;   // db_file_type (poster, banner, bus...)
+        private String typeCode;   // db_file_type (road_banner, logo_typography ...)
         private String typeLabel;  // 화면에 보여줄 이름 (도로용 현수막 등)
         private String imageUrl;   // /data/promotion/... 형태 (프론트에서 <img src>로 사용)
     }
@@ -204,14 +204,13 @@ public class MypageProjectController {
                     String rawPath = rs.getString("db_file_path");
 
                     a.setTypeCode(typeCode);
-                    // ✅ 파일명 + typeCode로 한글 이름 결정
-                    a.setTypeLabel(inferTypeLabel(rawPath, typeCode));
+                    // ✅ 이제 db_file_type(=typeCode)만 보고 한글 이름 결정
+                    a.setTypeLabel(toTypeLabel(typeCode));
 
                     a.setImageUrl(toWebPath(rawPath));
                     return a;
                 }
         );
-
 
         detail.setAssets(assets);
 
@@ -243,65 +242,54 @@ public class MypageProjectController {
         return normalized;
     }
 
-    // --------- 헬퍼: 타입 코드 -> 한글 이름 ---------
-
-    // --------- 헬퍼: 대분류 타입 코드 -> 한글 이름(fallback 용) ---------
+    // --------- 헬퍼: db_file_type 코드 -> 한글 이름 ---------
     private String toTypeLabel(String typeCode) {
-        if (typeCode == null) return "";
+        if (typeCode == null || typeCode.isBlank()) return "";
+
         return switch (typeCode) {
-            case "poster" -> "포스터";
-            case "logo"   -> "로고";
-            case "sign"   -> "표지판";
-            case "goods"  -> "굿즈";
-            case "banner" -> "배너";
-            default       -> typeCode;
+            // 세부 타입 (value, label 리스트 기준)
+            case "sign_parking"       -> "주차 표지판";
+            case "sign_welcome"       -> "입구 표지판";
+            case "sign_toilet"        -> "화장실 표지판";
+
+            case "mascot_video"       -> "마스코트 홍보영상";
+
+            case "goods_sticker"      -> "스티커";
+            case "goods_key_ring"     -> "키링";
+            case "goods_emoticon"     -> "이모티콘";
+
+            case "logo_illustration"  -> "로고 일러스트";
+            case "logo_typography"    -> "로고 타이포그래피";
+
+            case "poster_cardnews"    -> "안내 카드뉴스";
+            case "poster_video"       -> "포스터 홍보영상";
+
+            case "leaflet"            -> "리플렛";
+
+            case "road_banner"        -> "도로용 현수막";
+            case "streetlamp_banner"  -> "가로등 현수막";
+
+            case "bus_road"           -> "버스 도로 광고";
+            case "bus_shelter"        -> "버스정류장 광고";
+
+            case "subway_inner"       -> "지하철 내부 광고";
+            case "subway_light"       -> "지하철 조명광고";
+
+            case "etc_video"          -> "축제 홍보영상";
+
+            // 혹시 예전 데이터에서 쓰일 수 있는 대분류 코드들
+            case "poster"             -> "포스터";
+            case "logo"               -> "로고";
+            case "sign"               -> "표지판";
+            case "goods"              -> "굿즈";
+            case "banner"             -> "배너";
+            case "bus"                -> "버스";
+            case "subway"             -> "지하철";
+            case "video"              -> "영상";
+            case "cardnews"           -> "카드뉴스";
+
+            default                   -> typeCode; // 모르는 코드는 그대로 노출
         };
-    }
-
-    // --------- 헬퍼: 파일 경로 + 타입 코드 -> 한글 이름 ---------
-    private String inferTypeLabel(String dbFilePath, String typeCode) {
-        if (dbFilePath == null || dbFilePath.isBlank()) {
-            // 파일 경로가 없으면 대분류 이름만이라도 반환
-            return toTypeLabel(typeCode);
-        }
-
-        // 윈도우 경로 대비해서 역슬래시를 슬래시로 통일
-        String normalized = dbFilePath.replace("\\", "/");
-        int lastSlash = normalized.lastIndexOf('/');
-        String fileName = (lastSlash >= 0) ? normalized.substring(lastSlash + 1) : normalized;
-        // 예: "logo_typography.png", "sign_parking.png", "goods_sticker.png"
-
-        // 확장자 제거
-        int dotIdx = fileName.lastIndexOf('.');
-        String baseName = (dotIdx > 0) ? fileName.substring(0, dotIdx) : fileName;
-        // 예: "logo_typography"
-
-        // 🔽 여기서 원하는 규칙대로 매핑
-        switch (baseName) {
-            case "logo_typography":
-                return "타이포그래피 로고";
-            case "logo_illustration":
-                return "일러스트 로고";
-
-            case "sign_parking":
-                return "주차장 표지판";
-            case "sign_toilet":
-                return "화장실 표지판";
-            case "sign_welcome":
-                return "웰컴 표지판";
-
-            case "goods_sticker":
-                return "스티커 굿즈";
-            case "goods_key_ring":
-                return "키링 굿즈";
-            case "goods_emoticon":
-                return "이모티콘 굿즈";
-
-            // 필요하면 나중에 계속 추가하면 됨
-            default:
-                // 매칭 안 되면 대분류 이름(logo/sign/goods…)으로 fallback
-                return toTypeLabel(typeCode);
-        }
     }
 
 }
