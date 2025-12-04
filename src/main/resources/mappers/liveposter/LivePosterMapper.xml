@@ -9,7 +9,6 @@
             task_id,
             file_path,
             motion_prompt,
-            aspect_ratio,
             create_at,
             p_no
         ) VALUES (
