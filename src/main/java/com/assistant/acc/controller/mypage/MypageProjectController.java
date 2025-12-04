@@ -32,6 +32,7 @@ public class MypageProjectController {
         private LocalDate festivalStartDate; // proposal_metadata.festival_start_date
         private LocalDate festivalEndDate;   // proposal_metadata.festival_end_date
         private Integer promotionCount;      // promotion_path 개수
+        private String thumbnailUrl;         // poster 이미지 URL (/data/promotion/... 형태)
     }
 
     /** 프로젝트 상세 화면에서 사용할 개별 홍보물(파생물) 한 카드 */
@@ -94,7 +95,34 @@ public class MypageProjectController {
         List<ProjectSummaryDTO> list = jdbcTemplate.query(
                 sql,
                 ps -> ps.setString(1, memberNo),
-                (rs, rowNum) -> mapRowToProjectSummary(rs)
+                (rs, rowNum) -> {
+                    ProjectSummaryDTO dto = mapRowToProjectSummary(rs);
+                    
+                    // 각 프로젝트의 poster 이미지 찾기 (db_file_type이 정확히 'poster'인 것만)
+                    Integer projectId = dto.getProjectId();
+                    String posterSql = """
+                        SELECT db_file_path
+                        FROM promotion_path
+                        WHERE p_no = ?
+                          AND db_file_type = 'poster'
+                        ORDER BY promotion_path_no
+                        LIMIT 1
+                        """;
+                    
+                    List<String> posterPaths = jdbcTemplate.query(
+                            posterSql,
+                            ps -> ps.setInt(1, projectId),
+                            (rs2, rowNum2) -> rs2.getString("db_file_path")
+                    );
+                    
+                    // poster 이미지가 있으면 thumbnailUrl 설정
+                    if (!posterPaths.isEmpty()) {
+                        String rawPath = posterPaths.get(0);
+                        dto.setThumbnailUrl(toWebPath(rawPath));
+                    }
+                    
+                    return dto;
+                }
         );
 
         return ResponseEntity.ok(list);
@@ -287,7 +315,7 @@ public class MypageProjectController {
             case "subway"             -> "지하철";
             case "video"              -> "영상";
             case "cardnews"           -> "카드뉴스";
-
+            case "mascot"             -> "마스코트";    
             default                   -> typeCode; // 모르는 코드는 그대로 노출
         };
     }
