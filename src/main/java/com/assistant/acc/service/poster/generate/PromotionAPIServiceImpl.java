@@ -31,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.File;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -253,7 +254,9 @@ public class PromotionAPIServiceImpl implements PromotionAPIService {
         // 8. 파일 이동 + DB 저장
         for (int i = 0; i < result.getImages().size(); i++) {
             CreateImageResponseDto img = result.getImages().get(i);
-            String filename = img.getImageUrl().replace("/poster-images/", "");
+            // ⭐ 경로에서 파일명만 추출 (마스코트는 /poster-images/mascot/xxx.png 형태이므로)
+            String imageUrl = img.getImageUrl().replace("/poster-images/", "");
+            String filename = Paths.get(imageUrl).getFileName().toString();
             Integer promptNo = prompts.get(i).getPromptNo();
 
             fileStorageService.saveGeneratedPosterImage(
