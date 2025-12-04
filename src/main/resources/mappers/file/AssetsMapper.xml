@@ -35,6 +35,7 @@
         SELECT promotion_no
         FROM promotion
         WHERE p_no = #{projectNo}
+        AND promotion_type = #{type}
         ORDER BY created_at DESC
         LIMIT 1
         )
