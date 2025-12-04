@@ -287,7 +287,7 @@ public class MypageProjectController {
             case "subway"             -> "지하철";
             case "video"              -> "영상";
             case "cardnews"           -> "카드뉴스";
-
+            case "mascot"             -> "마스코트";
             default                   -> typeCode; // 모르는 코드는 그대로 노출
         };
     }
