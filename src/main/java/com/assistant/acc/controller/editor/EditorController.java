@@ -4,8 +4,11 @@ import com.assistant.acc.domain.editor.EditorTemplate;
 import com.assistant.acc.dto.editor.EditorAiRenderRequest;
 import com.assistant.acc.dto.editor.EditorAiRenderResponse;
 import com.assistant.acc.dto.editor.EditorBuildResponse;
+import com.assistant.acc.dto.editor.SaveImageRequest;
+import com.assistant.acc.dto.editor.SaveImageResponse;
 import com.assistant.acc.service.editor.EditorAiRenderService;
 import com.assistant.acc.service.editor.EditorBuildService;
+import com.assistant.acc.service.editor.EditorImageSaveService;
 import com.assistant.acc.service.editor.EditorTemplateService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +28,7 @@ public class EditorController {
     private final EditorBuildService editorBuildService;
     private final EditorTemplateService editorTemplateService;
     private final EditorAiRenderService editorAiRenderService;
+    private final EditorImageSaveService editorImageSaveService;
 
     // ==============================
     // 1) 템플릿 빌드
@@ -125,5 +129,42 @@ public class EditorController {
 
         EditorAiRenderResponse res = editorAiRenderService.renderWithAi(request);
         return ResponseEntity.ok(res);
+    }
+
+    // ==============================
+    // 4) 에디터 이미지 저장
+    // ==============================
+    /**
+     * 💾 에디터에서 수정한 이미지를 서버에 저장하고 DB에 저장
+     *
+     * FE:
+     *   - pNo: 프로젝트 번호
+     *   - imageBase64: base64 이미지 데이터 (data:image/png;base64,...)
+     *   - dbFileType: 파일 타입 ("poster", "mascot", "banner" 등)
+     *
+     * BE:
+     *   - base64 디코딩
+     *   - PUBLIC_FOLDER_PATH/data/promotion/m000001/{pNo}/editor/ 경로에 저장
+     *   - promotion_path 테이블에 저장
+     *   - 저장된 경로 반환
+     */
+    @PostMapping("/save-image")
+    public ResponseEntity<SaveImageResponse> saveImage(
+            @RequestBody SaveImageRequest request
+    ) {
+        log.info("💾 [EditorController] /save-image pNo={}, dbFileType={}",
+                request.getPNo(), request.getDbFileType());
+
+        SaveImageResponse response = editorImageSaveService.saveEditorImage(
+                request.getPNo(),
+                request.getImageBase64(),
+                request.getDbFileType()
+        );
+
+        if (response.getSuccess()) {
+            return ResponseEntity.ok(response);
+        } else {
+            return ResponseEntity.badRequest().body(response);
+        }
     }
 }
