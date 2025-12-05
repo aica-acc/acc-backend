@@ -11,4 +11,8 @@ public class PosterElementDTO {
     private Integer posterPromptNo;
     @JsonProperty("visual_prompt")
     private String visualPrompt;
+
+    private String fileUrl;
+    private String assetType;
+    private Integer isMain;
 }

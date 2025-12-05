@@ -27,4 +27,15 @@
             #{createAt}
         )
     </insert>
+
+    <select id="findAllByPNo" resultType="com.assistant.acc.dto.editor.PromotionPathDTO">
+        SELECT
+            promotion_path_no AS promotionPathNo,
+            p_no AS pNo,
+            db_file_path AS dbFilePath,
+            db_file_type AS dbFileType,
+            create_at AS createAt
+        FROM promotion_path
+        WHERE p_no = #{pNo}
+    </select>
 </mapper>

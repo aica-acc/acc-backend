@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.assistant.acc.mapper.project.ProposalMetadataMapper">
+
+    <select id="findByPNo" parameterType="int" resultType="com.assistant.acc.domain.project.ProposalMetadata">
+        SELECT
+            proposal_metadata_no,
+            p_no,
+            title,
+            festival_start_date,
+            festival_end_date,
+            location,
+            host,
+            organizer,
+            target,
+            contactInfo,
+            directions,
+            program_name,
+            event_name,
+            visual_keywords,
+            concept_description,
+            create_at
+        FROM
+            proposal_metadata
+        WHERE
+            p_no = #{pNo}
+            LIMIT 1
+    </select>
+
+</mapper>

@@ -22,7 +22,7 @@ public class LivePosterServiceImpl implements LivePosterService {
     private final PosterArchiveMapper posterMapper;
     private final RestTemplate restTemplate;
 
-    private static final String AI_SERVER_URL = "http://localhost:8000/liveposter/generate";
+    private static final String AI_SERVER_URL = "http://localhost:5000/liveposter/generate";
 
     @Override
     public void createLivePoster(Integer pNo, Integer posterNo) {
@@ -46,14 +46,14 @@ public class LivePosterServiceImpl implements LivePosterService {
         }
 
         try {
-            // 3. [AI 호출] ✅ 배열(Array) 형태로 응답을 받습니다.
+            // 3. [AI 호출]
             LivePosterResponseDTO[] responses = restTemplate.postForObject(
                     AI_SERVER_URL,
                     request,
                     LivePosterResponseDTO[].class
             );
 
-            // 4. [DB 저장] ✅ 반복문으로 결과 리스트를 모두 저장합니다.
+            // 4. [DB 저장]
             if (responses != null && responses.length > 0) {
                 for (LivePosterResponseDTO res : responses) {
                     LivePoster livePoster = new LivePoster();
@@ -63,7 +63,6 @@ public class LivePosterServiceImpl implements LivePosterService {
                     livePoster.setTaskId(res.getTaskId());
                     livePoster.setFilePath(res.getFilePath());
                     livePoster.setMotionPrompt(res.getMotionPrompt());
-                    livePoster.setAspectRatio(res.getAspectRatio()); // 비율 정보 저장
 
                     livePosterMapper.saveLivePoster(livePoster);
                     log.info("라이브 포스터 저장 완료 ({}): {}", res.getAspectRatio(), res.getFilePath());
