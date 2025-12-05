@@ -16,4 +16,18 @@
         LEFT JOIN proposal_metadata m On p.project_no = m.project_no
         WHERE p.file_path_no = #{filePathNo}
     </select>
+
+    <select id="findPromptsByProjectNo" resultType="com.assistant.acc.dto.image.PosterElementDTO">
+        SELECT
+            gfp.generate_file_path_no AS filePathNo,
+            gfp.file_path             AS fileUrl,
+            ga.generate_asset_type    AS assetType,
+            ga.is_main                AS isMain
+        FROM generated_asset ga
+                 JOIN generate_file_path gfp ON ga.generated_asset_no = gfp.generated_asset_no
+        WHERE ga.promotion_no IN (
+            SELECT promotion_no FROM promotion WHERE p_no = #{projectNo}
+        )
+        ORDER BY ga.created_at DESC
+    </select>
 </mapper>
