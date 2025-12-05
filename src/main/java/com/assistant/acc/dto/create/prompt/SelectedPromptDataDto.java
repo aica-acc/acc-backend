@@ -32,3 +32,4 @@ public class SelectedPromptDataDto {
     @JsonProperty("text_content")
     private PosterImageTextContentDto textContent;
 }
+
