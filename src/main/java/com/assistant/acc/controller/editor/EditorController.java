@@ -158,6 +158,7 @@ public class EditorController {
         SaveImageResponse response = editorImageSaveService.saveEditorImage(
                 request.getPNo(),
                 request.getImageBase64(),
+                request.getImagePath(),
                 request.getDbFileType()
         );
 
