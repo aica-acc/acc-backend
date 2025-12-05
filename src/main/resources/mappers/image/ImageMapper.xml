@@ -29,5 +29,6 @@
             SELECT promotion_no FROM promotion WHERE p_no = #{projectNo}
         )
         ORDER BY ga.created_at DESC
+
     </select>
 </mapper>
