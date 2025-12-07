@@ -10,6 +10,9 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import com.assistant.acc.service.image.ImageService;
+import com.assistant.acc.dto.image.PosterElementDTO;
+import java.util.List;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -21,6 +24,7 @@ public class ReportServiceImpl implements ReportService {
 
     private final ProposalMetadataMapper proposalMetadataMapper;
     private final RestTemplate restTemplate;
+    private final ImageService imageService;
 
     // AI 서버 기본 주소
     private static final String AI_BASE_URL = "http://localhost:5000/report";
@@ -74,11 +78,33 @@ public class ReportServiceImpl implements ReportService {
                 metadataMap.put("concept", "테스트 컨셉");
                 metadataMap.put("contact", "010-1234-5678");
             }
+
+            // ✅ (2) [추가] 이미지 정보 가져오기 (ImageService 활용)
+            List<PosterElementDTO> images = imageService.getProjectImages(projectNo);
+
+            // 포스터 찾기
+            String posterUrl = images.stream()
+                    .filter(img -> "poster".equals(img.getAssetType()))
+                    .findFirst()
+                    .map(PosterElementDTO::getFileUrl)
+                    .orElse("poster_main.jpg"); // 없으면 기본값
+
+            // 마스코트 찾기 (필요하다면)
+            String mascotUrl = images.stream()
+                    .filter(img -> "mascot".equals(img.getAssetType()))
+                    .findFirst()
+                    .map(PosterElementDTO::getFileUrl)
+                    .orElse("");
+
+            // 메타데이터에 추가해서 AI로 보냄
+            metadataMap.put("poster_image", posterUrl);
+            metadataMap.put("mascot_image", mascotUrl);
+
         } catch (Exception e) {
-            log.error("⚠️ DB 조회 중 오류 (더미 사용): {}", e.getMessage());
-            // 예외 발생 시에도 더미 데이터로 진행
-            metadataMap.put("title", "테스트 축제 (Error)");
+            log.error("⚠️ DB 조회 중 오류: {}", e.getMessage());
         }
+
+
 
         // 2. AI 서버 요청 준비
         Map<String, Object> requestBody = new HashMap<>();
