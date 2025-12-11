@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.assistant.acc.mapper.prompt.PromptMapper">
+    <resultMap id="PromptMap" type="com.assistant.acc.domain.prompt.Prompt">
+        <id property="promptNo" column="prompt_no"/>
+        <result property="userInputNo" column="user_input_no"/>
+        <result property="visualPrompt" column="visual_prompt"/>
+        <result property="styleName" column="style_name"/>
+        <result property="promotionType" column="promotion_type"/>  <!-- 추가 -->
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <!-- INSERT -->
+    <insert id="insertPrompt" useGeneratedKeys="true" keyProperty="promptNo">
+        INSERT INTO prompt (user_input_no, visual_prompt, style_name, promotion_type, created_at)
+        VALUES (#{userInputNo}, #{visualPrompt}, #{styleName}, #{promotionType}, NOW())
+    </insert>
+
+    <!-- SELECT -->
+    <select id="selectPrompt" resultMap="PromptMap">
+        SELECT *
+        FROM prompt
+        WHERE prompt_no = #{promptNo}
+    </select>
+
+    <select id="selectPrompts" resultMap="PromptMap">
+        SELECT *
+        FROM prompt
+        WHERE user_input_no = #{userInputNo}
+        ORDER BY created_at DESC
+        LIMIT 4
+    </select>
+
+    <select id="selectPromptsByType" resultMap="PromptMap">
+        SELECT *
+        FROM prompt
+        WHERE user_input_no = #{userInputNo}
+        AND promotion_type = #{promotionType}
+        ORDER BY created_at DESC
+        LIMIT 4
+    </select>
+
+    <!-- UPDATE -->
+    <update id="updatePrompt">
+        UPDATE prompt
+        SET visual_prompt = #{visualPrompt},
+        style_name = #{styleName}
+        WHERE prompt_no = #{promptNo}
+    </update>
+
+    <!-- DELETE -->
+    <delete id="deletePrompt">
+        DELETE FROM prompt
+        WHERE prompt_no = #{promptNo}
+    </delete>
+
+</mapper>

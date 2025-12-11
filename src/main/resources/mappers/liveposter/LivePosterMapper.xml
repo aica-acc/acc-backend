@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.assistant.acc.mapper.liveposter.LivePosterMapper">
+    <insert id="saveLivePoster" parameterType="com.assistant.acc.domain.liveposter.LivePoster">
+        INSERT INTO live_poster (
+            poster_no,
+            task_id,
+            file_path,
+            motion_prompt,
+            create_at,
+            p_no
+        ) VALUES (
+                     #{posterNo},
+                     #{taskId},
+                     #{filePath},
+                     #{motionPrompt},
+                     NOW(),
+                     #{pNo}
+                 )
+    </insert>
+</mapper>

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.assistant.acc.mapper.project.promotion.GeneratedAssetMapper">
+
+    <resultMap id="AssetMap" type="com.assistant.acc.domain.project.promotion.GeneratedAsset">
+        <id property="generatedAssetNo" column="generated_asset_no"/>
+        <result property="promotionNo" column="promotion_no"/>
+        <result property="promptNo" column="prompt_no"/>
+        <result property="isMain" column="is_main"/>
+        <result property="generateAssetType" column="generate_asset_type"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <!-- INSERT -->
+    <insert id="AssetInsert" useGeneratedKeys="true" keyProperty="generatedAssetNo">
+        INSERT INTO generated_asset (promotion_no, prompt_no, is_main, generate_asset_type, created_at)
+        VALUES (#{promotionNo}, #{promptNo}, #{isMain}, #{generateAssetType}, NOW())
+    </insert>
+
+    <!-- SELECT -->
+    <select id="AssetSelect" resultMap="AssetMap">
+        SELECT * FROM generated_asset WHERE generated_asset_no = #{generatedAssetNo}
+    </select>
+
+    <select id="AssetSelects" resultMap="AssetMap">
+        SELECT * FROM generated_asset WHERE promotion_no = #{promotionNo} ORDER BY created_at DESC
+    </select>
+
+    <!-- UPDATE -->
+    <update id="AssetUpdate">
+        UPDATE generated_asset
+        SET generate_asset_type = #{generateAssetType},
+        updated_at = NOW()
+        WHERE generated_asset_no = #{generatedAssetNo}
+    </update>
+
+    <!-- DELETE -->
+    <delete id="AssetDelete">
+        DELETE FROM generated_asset WHERE generated_asset_no = #{generatedAssetNo}
+    </delete>
+
+    <select id="countByProjectAndType" resultType="int">
+        SELECT COUNT(*)
+        FROM generated_asset ga
+        JOIN promotion p ON ga.promotion_no = p.promotion_no
+        WHERE p.p_no = #{projectNo}
+        AND ga.generate_asset_type = #{type}
+    </select>
+
+    <select id="selectByProjectAndType" resultMap="AssetMap">
+        SELECT ga.*
+        FROM generated_asset ga
+        JOIN promotion p ON ga.promotion_no = p.promotion_no
+        WHERE p.p_no = #{projectNo}
+        AND ga.generate_asset_type = #{type}
+        ORDER BY ga.created_at DESC
+        LIMIT 4
+    </select>
+
+</mapper>

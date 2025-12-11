@@ -1,5 +1,6 @@
 package com.assistant.acc.domain.project;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import java.util.Date;
 
@@ -8,6 +9,12 @@ public class ProposalMetadata {
 
     private Integer proposalMetadataNo;
     private Integer projectNo;
+    
+    // JSON 직렬화 시 pNo 필드도 포함 (프론트엔드 호환성)
+    @JsonProperty("pNo")
+    public Integer getPNo() {
+        return projectNo;
+    }
 
     private String title;
     private Date festivalStartDate;

@@ -67,7 +67,7 @@
         SELECT p_no
         FROM project
         WHERE m_no = #{m_no}
-        ORDER BY create_at DESC
+        ORDER BY p_no DESC
         LIMIT 1
     </select>
 
@@ -94,5 +94,28 @@
         WHERE p_no = #{p_no}
         ORDER BY create_at DESC
         LIMIT 1;
+    </select>
+    <!-- 5) 프로젝트 번호로 메타데이터 조회 -->
+    <select id="findMetadataByPno" parameterType="int" resultType="com.assistant.acc.domain.project.ProposalMetadata">
+        SELECT
+            proposal_metadata_no AS proposalMetadataNo,
+            p_no AS pNo,
+            title,
+            visual_keywords AS visualKeywords,
+            concept_description AS conceptDescription
+        FROM proposal_metadata
+        WHERE p_no = #{pNo}
+            LIMIT 1
+    </select>
+    <!-- 6) 프로젝트 번호로 메타데이터 조회(지역 트렌드) -->
+    <select id="selectUserInput" parameterType="int" resultType="com.assistant.acc.domain.project.UserInput">
+        SELECT
+            user_input_no,
+            p_no,
+            theme,
+            keywords,  p_name
+        FROM user_input
+        WHERE p_no = #{pNo}
+            LIMIT 1
     </select>
 </mapper>

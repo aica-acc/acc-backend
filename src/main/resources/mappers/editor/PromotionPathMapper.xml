@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.assistant.acc.mapper.editor.PromotionPathMapper">
+
+
+    <resultMap id="PromotionPathResultMap" type="com.assistant.acc.dto.editor.PromotionPathDTO">
+        <id     property="promotionPathNo" column="promotion_path_no"/>
+        <result property="pNo"             column="p_no"/>
+        <result property="dbFilePath"      column="db_file_path"/>
+        <result property="dbFileType"      column="db_file_type"/>
+        <result property="createAt"        column="create_at"/>
+    </resultMap>
+
+    <insert id="insertPromotionPath" parameterType="com.assistant.acc.dto.editor.PromotionPathDTO">
+        INSERT INTO promotion_path (
+            p_no,
+            db_file_path,
+            db_file_type,
+            create_at
+        ) VALUES (
+            #{pNo},
+            #{dbFilePath},
+            #{dbFileType},
+            #{createAt}
+        )
+    </insert>
+
+    <select id="findAllByPNo" resultType="com.assistant.acc.dto.editor.PromotionPathDTO">
+        SELECT
+            promotion_path_no AS promotionPathNo,
+            p_no AS pNo,
+            db_file_path AS dbFilePath,
+            db_file_type AS dbFileType,
+            create_at AS createAt
+        FROM promotion_path
+        WHERE p_no = #{pNo}
+    </select>
+</mapper>

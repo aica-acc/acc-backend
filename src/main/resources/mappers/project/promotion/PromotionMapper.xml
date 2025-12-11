@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.assistant.acc.mapper.project.promotion.PromotionMapper">
+    <resultMap id="PromotionMap" type="com.assistant.acc.domain.project.promotion.Promotion">
+        <id property="promotionNo" column="promotion_no"/>
+        <result property="pNo" column="p_no"/>
+        <result property="promptNo" column="prompt_no"/>
+        <result property="promotionType" column="promotion_type"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <!-- INSERT -->
+    <insert id="insertPromotion" useGeneratedKeys="true" keyProperty="promotionNo">
+        INSERT INTO promotion (p_no, prompt_no, promotion_type, created_at)
+        VALUES (#{pNo}, #{promptNo}, #{promotionType}, NOW())
+    </insert>
+
+    <!-- SELECT -->
+    <select id="selectPromotion" resultMap="PromotionMap">
+        SELECT * FROM promotion WHERE promotion_no = #{promotionNo}
+    </select>
+
+    <select id="selectPromotions" resultMap="PromotionMap">
+        SELECT * FROM promotion WHERE p_no = #{pNo} ORDER BY created_at DESC
+    </select>
+
+    <!-- UPDATE -->
+    <update id="updatePromotion">
+        UPDATE promotion
+        SET promotion_type = #{promotionType},
+        updated_at = NOW()
+        WHERE promotion_no = #{promotionNo}
+    </update>
+
+    <!-- DELETE -->
+    <delete id="deletePromotion">
+        DELETE FROM promotion WHERE promotion_no = #{promotionNo}
+    </delete>
+
+</mapper>

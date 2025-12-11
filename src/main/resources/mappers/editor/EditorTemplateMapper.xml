@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.assistant.acc.mapper.editor.EditorTemplateMapper">
+
+    <resultMap id="EditorTemplateResultMap"
+               type="com.assistant.acc.domain.editor.EditorTemplate">
+        <id     property="editorTemplateId" column="editor_template_id"/>
+        <result property="pNo"              column="p_no"/>
+        <result property="filePath"         column="file_path"/>
+        <result property="createdAt"        column="created_at"/>
+        <result property="updatedAt"        column="updated_at"/>
+    </resultMap>
+
+    <!-- INSERT -->
+    <insert id="insertEditorTemplate"
+            parameterType="com.assistant.acc.domain.editor.EditorTemplate">
+        INSERT INTO editor_template (
+            p_no,
+            file_path
+        )
+        VALUES (
+            #{pNo},
+            #{filePath}
+        )
+    </insert>
+
+    <!-- SELECT BY PROJECT -->
+    <select id="selectLatestByProjectNo"
+            resultMap="EditorTemplateResultMap">
+        SELECT
+            editor_template_id,
+            p_no,
+            file_path,
+            created_at,
+            updated_at
+        FROM editor_template
+        WHERE p_no = #{pNo}
+        ORDER BY updated_at DESC, created_at DESC
+        LIMIT 1
+    </select>
+
+</mapper>
