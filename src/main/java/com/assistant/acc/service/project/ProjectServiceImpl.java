@@ -1,5 +1,6 @@
 package com.assistant.acc.service.project;
 
+import org.springframework.beans.factory.annotation.Value;
 import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -36,6 +37,9 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Service
 public class ProjectServiceImpl implements ProjectService {
+
+    @Value("${python.api.url:http://localhost:5000}")
+    private String pythonApiUrl;
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
@@ -147,10 +151,10 @@ public class ProjectServiceImpl implements ProjectService {
 
         // 2-2) Python 분석 요청
         System.out.println("[Service - Step 3] Python 서버 호출 시작...");
-        System.out.println("  URL: http://localhost:5000/analyze/proposal");
+        System.out.println("  URL: " + pythonApiUrl + "/analyze/proposal");
 
         ResponseEntity<String> response = restTemplate.postForEntity(
-                "http://localhost:5000/analyze/proposal",
+                pythonApiUrl + "/analyze/proposal",
                 request,
                 String.class);
 
@@ -294,7 +298,7 @@ public class ProjectServiceImpl implements ProjectService {
             HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(formData, headers);
 
             // 4️⃣ Python FastAPI 호출
-            String pythonUrl = "http://localhost:5000/analyze/total_trend";
+            String pythonUrl = pythonApiUrl + "/analyze/total_trend";
 
             Map<String, Object> result = restTemplate.postForObject(
                     pythonUrl,
@@ -360,7 +364,7 @@ public class ProjectServiceImpl implements ProjectService {
             HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(formData, headers);
 
             // 4. 파이썬 서버 호출
-            String pythonUrl = "http://localhost:5000/analyze/region_trend";
+            String pythonUrl = pythonApiUrl + "/analyze/region_trend";
 
             ResponseEntity<RegionTrendResponseDTO> response = restTemplate.postForEntity(
                     pythonUrl,

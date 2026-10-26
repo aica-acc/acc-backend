@@ -1,5 +1,6 @@
 package com.assistant.acc.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 
@@ -22,10 +23,20 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
+    // 포스터 아카이브 이미지 폴더 (상대경로면 실행 위치 기준)
+    @Value("${files.poster-images-dir:./홍보물}")
+    private String posterImagesDir;
+
+    @Value("${cors.allowed-origin-patterns:http://localhost:*,http://127.0.0.1:*}")
+    private String[] allowedOriginPatterns;
+
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
 
-        String imagePath = "file:///C:/final_project/ACC/acc-ai/홍보물/";
+        String imagePath = java.nio.file.Paths.get(posterImagesDir).toAbsolutePath().toUri().toString();
+        if (!imagePath.endsWith("/")) {
+            imagePath += "/";
+        }
 
         log.info("🚀 정적 이미지 리소스 핸들러 등록: /poster-images/** -> " + imagePath);
 
@@ -63,10 +74,7 @@ public class WebConfig implements WebMvcConfigurer {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOriginPatterns(List.of(
-                "http://localhost:*",
-                "http://127.0.0.1:*"
-        ));
+        config.setAllowedOriginPatterns(List.of(allowedOriginPatterns));
         config.setAllowCredentials(true);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With", "Accept"));

@@ -1,5 +1,6 @@
                                                                 package com.assistant.acc.service.liveposter;
 
+import org.springframework.beans.factory.annotation.Value;
 import com.assistant.acc.domain.liveposter.LivePoster;
 import com.assistant.acc.domain.project.ProposalMetadata;
 import com.assistant.acc.dto.liveposter.LivePosterRequestDTO;
@@ -22,7 +23,8 @@ public class LivePosterServiceImpl implements LivePosterService {
     private final PosterArchiveMapper posterMapper;
     private final RestTemplate restTemplate;
 
-    private static final String AI_SERVER_URL = "http://localhost:5000/liveposter/generate";
+    @Value("${python.api.url:http://localhost:5000}")
+    private String pythonApiUrl;
 
     @Override
     public void createLivePoster(Integer pNo, Integer posterNo) {
@@ -48,7 +50,7 @@ public class LivePosterServiceImpl implements LivePosterService {
         try {
             // 3. [AI 호출]
             LivePosterResponseDTO[] responses = restTemplate.postForObject(
-                    AI_SERVER_URL,
+                    pythonApiUrl + "/liveposter/generate",
                     request,
                     LivePosterResponseDTO[].class
             );

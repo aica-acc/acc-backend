@@ -1,6 +1,7 @@
 
 package com.assistant.acc.service.editor;
 
+import org.springframework.beans.factory.annotation.Value;
 import com.assistant.acc.dto.editor.EditorAiRenderRequest;
 import com.assistant.acc.dto.editor.EditorAiRenderResponse;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +23,8 @@ import java.util.Map;
 public class EditorAiRenderServiceImpl implements EditorAiRenderService {
 
     // AI 서버 URL: /editor/render 엔드포인트
-    private static final String PYTHON_AI_RENDER_URL = "http://127.0.0.1:5000/editor/render";
+    @Value("${python.api.url:http://localhost:5000}")
+    private String pythonApiUrl;
 
     @Override
     public EditorAiRenderResponse renderWithAi(EditorAiRenderRequest request) {
@@ -60,12 +62,12 @@ public class EditorAiRenderServiceImpl implements EditorAiRenderService {
             payload.put("layoutType", request.getLayoutType() != null ? request.getLayoutType() : "default");
 
             log.info("🎨 [EditorAiRenderService] AI 색상 추천 요청 URL={}, layoutType={}",
-                    PYTHON_AI_RENDER_URL, request.getLayoutType());
+                    pythonApiUrl + "/editor/render", request.getLayoutType());
 
             // AI 서버 응답: { status: "success", updatedCanvas: {...} }
             ResponseEntity<Map> responseEntity =
                     restTemplate.postForEntity(
-                            PYTHON_AI_RENDER_URL,
+                            pythonApiUrl + "/editor/render",
                             payload,
                             Map.class
                     );
