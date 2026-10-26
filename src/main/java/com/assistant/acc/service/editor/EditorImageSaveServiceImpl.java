@@ -1,5 +1,6 @@
 package com.assistant.acc.service.editor;
 
+import com.assistant.acc.security.CurrentMember;
 import com.assistant.acc.dto.editor.PromotionPathDTO;
 import com.assistant.acc.dto.editor.SaveImageResponse;
 import com.assistant.acc.mapper.editor.PromotionPathMapper;
@@ -26,9 +27,6 @@ public class EditorImageSaveServiceImpl implements EditorImageSaveService {
     private String baseDir;
 
     private final PromotionPathMapper promotionPathMapper;
-
-    // memberNo는 하드코딩 (필요시 ProjectMapper로 조회 가능)
-    private static final String MEMBER_NO = "M000001";
 
     @Override
     @Transactional
@@ -123,7 +121,7 @@ public class EditorImageSaveServiceImpl implements EditorImageSaveService {
                 "public",
                 "data",
                 "promotion",
-                MEMBER_NO,
+                CurrentMember.no(),
                 pNo.toString(),
                 "editor"
         ).toString();
@@ -149,7 +147,7 @@ public class EditorImageSaveServiceImpl implements EditorImageSaveService {
 
         // 5. DB 경로 생성 (public 제외한 상대 경로)
         return String.format("/data/promotion/%s/%d/editor/%s", 
-                MEMBER_NO, pNo, filename);
+                CurrentMember.no(), pNo, filename);
     }
 
     /**

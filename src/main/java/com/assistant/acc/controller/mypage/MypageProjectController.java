@@ -1,5 +1,6 @@
 package com.assistant.acc.controller.mypage;
 
+import com.assistant.acc.security.CurrentMember;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -60,14 +61,12 @@ public class MypageProjectController {
 
     /**
      * 프로젝트 목록 조회
-     * GET /api/mypage/projects?m_no=M000001
+     * GET /api/mypage/projects  (로그인한 회원의 프로젝트만 조회)
      */
     @GetMapping("/projects")
-    public ResponseEntity<List<ProjectSummaryDTO>> getProjects(
-            @RequestParam(name = "m_no", required = false) String mNo
-    ) {
+    public ResponseEntity<List<ProjectSummaryDTO>> getProjects() {
         // 람다에서 쓸 값은 한 번만 정해서 final 처럼 쓰기
-        final String memberNo = (mNo == null || mNo.isBlank()) ? "M000001" : mNo;
+        final String memberNo = CurrentMember.no();
 
         log.info("📂 [MypageProjectController] 프로젝트 목록 조회, m_no={}", memberNo);
 
@@ -158,6 +157,16 @@ public class MypageProjectController {
             @PathVariable("projectId") Integer projectId
     ) {
         log.info("📂 [MypageProjectController] 프로젝트 상세 조회, p_no={}", projectId);
+
+        // 본인 프로젝트(또는 관리자)만 조회 가능
+        if (!CurrentMember.isAdmin()) {
+            Integer owned = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM project WHERE p_no = ? AND m_no = ?",
+                    Integer.class, projectId, CurrentMember.no());
+            if (owned == null || owned == 0) {
+                return ResponseEntity.status(403).build();
+            }
+        }
 
         // 1) 상단 정보 (축제명, 기간, 장소, 홍보물 개수)
         String headerSql = """

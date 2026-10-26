@@ -3,7 +3,7 @@
 
     <select id="findImageDetailById" resultType="com.assistant.acc.dto.image.ImageDetailDTO">
         SELECT
-            P.file_path_no,
+            p.file_path_no,
             p.file_url,
             p.file_name,
             'png' as extension_name,
@@ -13,7 +13,7 @@
             m.location as region,
             YEAR(m.festival_start_date) as year
         FROM poster_archive p
-        LEFT JOIN proposal_metadata m On p.project_no = m.project_no
+        LEFT JOIN proposal_metadata m On p.project_no = m.p_no
         WHERE p.file_path_no = #{filePathNo}
     </select>
 

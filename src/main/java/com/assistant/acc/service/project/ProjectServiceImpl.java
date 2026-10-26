@@ -1,5 +1,6 @@
 package com.assistant.acc.service.project;
 
+import com.assistant.acc.security.CurrentMember;
 import org.springframework.beans.factory.annotation.Value;
 import java.io.IOException;
 import java.text.ParseException;
@@ -45,9 +46,6 @@ public class ProjectServiceImpl implements ProjectService {
     private final ObjectMapper objectMapper;
     private final ProjectMapper projectMapper;
 
-    // 고정 회원 ID
-    private static final String DEFAULT_MEMBER_NO = "M000001";
-
     public ProjectServiceImpl(RestTemplate restTemplate, ProjectMapper projectMapper, ObjectMapper objectMapper) {
         this.restTemplate = restTemplate;
         this.objectMapper = objectMapper;
@@ -61,7 +59,7 @@ public class ProjectServiceImpl implements ProjectService {
     @Transactional
     public Project createProjectAndSaveInput(String theme, String keywords, String title, String memeberId) {
         Project newProject = new Project();
-        newProject.setMemberNo("M000001");
+        newProject.setMemberNo(memeberId);
         projectMapper.insertProject(newProject);
         Integer newPNo = newProject.getProjectNo();
 
@@ -94,7 +92,7 @@ public class ProjectServiceImpl implements ProjectService {
     public ProposalMetadata getLatestProposalMetadata() {
 
         // 1) 최신 프로젝트 번호 조회
-        Integer latestPno = projectMapper.selectLatestProjectNo(DEFAULT_MEMBER_NO);
+        Integer latestPno = projectMapper.selectLatestProjectNo(CurrentMember.no());
         System.out.println("latestPno: " + latestPno);
         if (latestPno == null) {
             return null;
@@ -125,7 +123,7 @@ public class ProjectServiceImpl implements ProjectService {
 
         // 1) 새로운 Project 생성
         System.out.println("[Service - Step 1] 프로젝트 생성 시작...");
-        String memberId = DEFAULT_MEMBER_NO;
+        String memberId = CurrentMember.no();
         Project project = createProjectAndSaveInput(theme, keywords, title, memberId);
         Integer pNo = project.getProjectNo();
         System.out.println("[Service - Step 1] ✅ 프로젝트 생성 완료, pNo = " + pNo);

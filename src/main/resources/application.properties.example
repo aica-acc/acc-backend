@@ -18,6 +18,19 @@ files.path=./data/proposal
 # 포스터 아카이브 이미지 폴더 (/poster-images/** 로 서빙)
 files.poster-images-dir=./홍보물
 
+# --- 인증 (JWT) ---
+# 32바이트 이상 임의 문자열. 비우면 기동할 때마다 랜덤 키 (재시작 시 로그인 풀림)
+auth.jwt.secret=
+auth.jwt.expire-hours=12
+# 'test 계정으로 로그인하기' 허용 여부 (외부 공개 서버에서는 false 권장)
+auth.test-login.enabled=true
+auth.test.email=test@acc.local
+# 관리자 계정: 비밀번호(8자 이상)를 주면 최초 기동 시 생성
+auth.admin.email=admin@acc.local
+auth.admin.password=
+# test 계정이 자동 입력에 쓰는 샘플 기획서 폴더 (samples.json + 파일들)
+test.samples-dir=./data/samples/proposals
+
 # --- CORS (콤마 구분) ---
 cors.allowed-origin-patterns=http://localhost:*,http://127.0.0.1:*
 

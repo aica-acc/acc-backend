@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.assistant.acc.mapper.member.MemberMapper">
+
+    <resultMap id="MemberResultMap" type="com.assistant.acc.domain.member.Member">
+        <id     property="mNo"          column="m_no"/>
+        <result property="email"        column="m_email"/>
+        <result property="name"         column="m_name"/>
+        <result property="phone"        column="m_phone"/>
+        <result property="passwordHash" column="password_hash"/>
+        <result property="role"         column="role"/>
+        <result property="state"        column="state"/>
+        <result property="createAt"     column="create_at"/>
+        <result property="deleteAt"     column="delete_at"/>
+    </resultMap>
+
+    <sql id="memberColumns">
+        m_no, m_email, m_name, m_phone, password_hash, role, state, create_at, delete_at
+    </sql>
+
+    <select id="findByEmail" resultMap="MemberResultMap">
+        SELECT <include refid="memberColumns"/> FROM member WHERE m_email = #{email}
+    </select>
+
+    <select id="findByNo" resultMap="MemberResultMap">
+        SELECT <include refid="memberColumns"/> FROM member WHERE m_no = #{mNo}
+    </select>
+
+    <select id="selectMaxNo" resultType="string">
+        SELECT MAX(m_no) FROM member
+    </select>
+
+    <insert id="insert" parameterType="com.assistant.acc.domain.member.Member">
+        INSERT INTO member (m_no, m_email, m_name, m_phone, password_hash, role, state, create_at)
+        VALUES (#{mNo}, #{email}, #{name}, #{phone}, #{passwordHash}, #{role}, #{state}, CURDATE())
+    </insert>
+
+    <select id="findAll" resultMap="MemberResultMap">
+        SELECT <include refid="memberColumns"/> FROM member ORDER BY m_no
+    </select>
+
+    <update id="updateRole">
+        UPDATE member SET role = #{role} WHERE m_no = #{mNo}
+    </update>
+
+    <update id="updateState">
+        UPDATE member SET state = #{state} WHERE m_no = #{mNo}
+    </update>
+</mapper>
