@@ -40,6 +40,11 @@ spring.datasource.username=
 spring.datasource.password=
 spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
 
+# --- DB 마이그레이션 (Flyway) ---
+# 기동할 때 src/main/resources/db/migration 의 V*.sql 이 자동 적용된다 (새 DB 도, 이미 테이블이 있는 기존 DB 도 안전).
+# baseline 설정은 코드(FlywayConfig)에 이미 들어 있어 따로 적지 않아도 된다. 끄려면:
+# spring.flyway.enabled=false
+
 # --- MyBatis ---
 mybatis.mapper-locations=classpath:/mappers/**/*.xml
 mybatis.type-aliases-package=com.assistant.acc

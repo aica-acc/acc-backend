@@ -1,4 +1,10 @@
 /* ============================================================
+   V1. 기본 스키마 (팀 공유 DDL 기준)
+   - 이미 테이블이 있는 DB 에서도 안전하도록 CREATE TABLE IF NOT EXISTS 로 작성
+   - 원본의 `cardnews_ reference_no` 오타(공백)를 바로잡음
+============================================================ */
+
+/* ============================================================
    ACC PROJECT – FULL DATABASE DDL
    테이블 생성 순서: FK 의존성 높은 테이블이 뒤로 가도록 정렬됨
    모든 테이블 = 네가 준 설계 100% 그대로 반영
@@ -7,7 +13,7 @@
 /* ============================================================
    1. member (회원)
 ============================================================ */
-CREATE TABLE member (
+CREATE TABLE IF NOT EXISTS member (
     m_no VARCHAR(10) PRIMARY KEY,
     m_email VARCHAR(50) UNIQUE NOT NULL,
     m_name VARCHAR(50) NOT NULL,
@@ -20,7 +26,7 @@ CREATE TABLE member (
 /* ============================================================
    2. project (프로젝트) - member FK
 ============================================================ */
-CREATE TABLE project (
+CREATE TABLE IF NOT EXISTS project (
     p_no INT AUTO_INCREMENT PRIMARY KEY,
     m_no VARCHAR(10) NOT NULL,
     create_at DATE DEFAULT (CURRENT_DATE),
@@ -30,7 +36,7 @@ CREATE TABLE project (
 /* ============================================================
    3. user_input (유저 입력값) - project FK
 ============================================================ */
-CREATE TABLE user_input (
+CREATE TABLE IF NOT EXISTS user_input (
     user_input_no INT AUTO_INCREMENT PRIMARY KEY,
     p_no INT NOT NULL,
     theme TEXT NOT NULL,
@@ -43,7 +49,7 @@ CREATE TABLE user_input (
 /* ============================================================
    4. proposal_file_path (기획서 파일 경로) - user_input FK
 ============================================================ */
-CREATE TABLE proposal_file_path (
+CREATE TABLE IF NOT EXISTS proposal_file_path (
     proposal_file_path_no INT AUTO_INCREMENT PRIMARY KEY,
     user_input_no INT NOT NULL,
     proposal_file_path VARCHAR(250) NOT NULL,
@@ -55,7 +61,7 @@ CREATE TABLE proposal_file_path (
 /* ============================================================
    5. file_path (프로젝트 파일 경로) - project FK
 ============================================================ */
-CREATE TABLE file_path (
+CREATE TABLE IF NOT EXISTS file_path (
     file_path_no INT AUTO_INCREMENT PRIMARY KEY,
     p_no INT NOT NULL,
     db_file_path VARCHAR(250) NOT NULL,
@@ -67,7 +73,7 @@ CREATE TABLE file_path (
 /* ============================================================
    6. prompt (프롬프트) - user_input FK
 ============================================================ */
-CREATE TABLE prompt (
+CREATE TABLE IF NOT EXISTS prompt (
     prompt_no INT AUTO_INCREMENT PRIMARY KEY,
     user_input_no INT NOT NULL,
     visual_prompt TEXT NOT NULL,
@@ -80,7 +86,7 @@ CREATE TABLE prompt (
 /* ============================================================
    7. promotion (홍보물) - project FK, prompt FK
 ============================================================ */
-CREATE TABLE promotion (
+CREATE TABLE IF NOT EXISTS promotion (
     promotion_no INT AUTO_INCREMENT PRIMARY KEY,
     p_no INT NOT NULL,
     prompt_no INT NOT NULL,
@@ -94,7 +100,7 @@ CREATE TABLE promotion (
 /* ============================================================
    8. generated_asset (생성된 파생물) - promotion, prompt FK
 ============================================================ */
-CREATE TABLE generated_asset (
+CREATE TABLE IF NOT EXISTS generated_asset (
     generated_asset_no INT AUTO_INCREMENT PRIMARY KEY,
     promotion_no INT NOT NULL,
     prompt_no INT NOT NULL,
@@ -109,7 +115,7 @@ CREATE TABLE generated_asset (
 /* ============================================================
    9. generate_file_path (파생물 파일 경로) - generated_asset FK
 ============================================================ */
-CREATE TABLE generate_file_path (
+CREATE TABLE IF NOT EXISTS generate_file_path (
     generate_file_path_no INT AUTO_INCREMENT PRIMARY KEY,
     generated_asset_no INT NOT NULL,
     file_path TEXT NOT NULL,
@@ -122,7 +128,7 @@ CREATE TABLE generate_file_path (
 /* ============================================================
    10. video (영상) - promotion FK, generate_file_path FK
 ============================================================ */
-CREATE TABLE video (
+CREATE TABLE IF NOT EXISTS video (
     video_no INT AUTO_INCREMENT PRIMARY KEY,
     promotion_no INT NOT NULL,
     generate_file_path_no INT NOT NULL,
@@ -135,7 +141,7 @@ CREATE TABLE video (
 /* ============================================================
    11. proposal_metadata (기획서 메타데이터) - project FK
 ============================================================ */
-CREATE TABLE proposal_metadata (
+CREATE TABLE IF NOT EXISTS proposal_metadata (
     proposal_metadata_no INT AUTO_INCREMENT PRIMARY KEY,
     p_no INT NOT NULL,
     title TEXT NOT NULL,
@@ -158,7 +164,7 @@ CREATE TABLE proposal_metadata (
 /* ============================================================
    12. poster_reference_data (포스터 참조데이터)
 ============================================================ */
-CREATE TABLE poster_reference_data (
+CREATE TABLE IF NOT EXISTS poster_reference_data (
     poster_reference_data_no INT AUTO_INCREMENT PRIMARY KEY,
     year INT NOT NULL,
     region VARCHAR(512) NOT NULL,
@@ -170,7 +176,7 @@ CREATE TABLE poster_reference_data (
 /* ============================================================
    13. poster_score (포스터 점수) - poster_reference_data FK
 ============================================================ */
-CREATE TABLE poster_score (
+CREATE TABLE IF NOT EXISTS poster_score (
     poster_score_no INT AUTO_INCREMENT PRIMARY KEY,
     poster_reference_data_no INT NOT NULL,
     aesthetic DECIMAL(10,1) NOT NULL,
@@ -188,7 +194,7 @@ CREATE TABLE poster_score (
 /* ============================================================
    14. festival_category (축제 카테고리)
 ============================================================ */
-CREATE TABLE festival_category (
+CREATE TABLE IF NOT EXISTS festival_category (
     festival_category_no INT AUTO_INCREMENT PRIMARY KEY,
     category VARCHAR(512) NOT NULL
 );
@@ -196,7 +202,7 @@ CREATE TABLE festival_category (
 /* ============================================================
    15. cardnews_reference (카드뉴스 참조데이터)
 ============================================================ */
-CREATE TABLE cardnews_reference (
+CREATE TABLE IF NOT EXISTS cardnews_reference (
     cardnews_reference_no INT AUTO_INCREMENT PRIMARY KEY,
     file_path_no INT NOT NULL,
     festival_category_no INT NOT NULL,
@@ -208,7 +214,7 @@ CREATE TABLE cardnews_reference (
 /* ============================================================
    16. cardnews_score (카드뉴스 점수) – 위의 cardnews_reference FK
 ============================================================ */
-CREATE TABLE cardnews_score (
+CREATE TABLE IF NOT EXISTS cardnews_score (
     cardnews_score_no INT AUTO_INCREMENT PRIMARY KEY,
     cardnews_reference_no INT NOT NULL,
     clarity_score DECIMAL(10,1),
@@ -232,7 +238,7 @@ CREATE TABLE cardnews_score (
 /* ============================================================
    17. plan_anlazy (기획서 분석 데이터)
 ============================================================ */
-CREATE TABLE plan_anlazy (
+CREATE TABLE IF NOT EXISTS plan_anlazy (
     plan_anlazy_no INT AUTO_INCREMENT PRIMARY KEY,
     anlazy_result JSON NOT NULL
 );
@@ -240,7 +246,7 @@ CREATE TABLE plan_anlazy (
 /* ============================================================
    18. live_poster (라이브 포스터) – promotion FK, project FK
 ============================================================ */
-CREATE TABLE live_poster (
+CREATE TABLE IF NOT EXISTS live_poster (
     live_poster_no INT AUTO_INCREMENT PRIMARY KEY,
     poster_no INT NOT NULL,
     task_id VARCHAR(512) NOT NULL,
@@ -255,7 +261,7 @@ CREATE TABLE live_poster (
 /* ============================================================
    19. editor_template (에디터 템플릿) – project FK
 ============================================================ */
-CREATE TABLE editor_template (
+CREATE TABLE IF NOT EXISTS editor_template (
     editor_template_id INT AUTO_INCREMENT PRIMARY KEY,
     p_no INT NOT NULL,
     file_path VARCHAR(512) NOT NULL,
@@ -267,7 +273,7 @@ CREATE TABLE editor_template (
 /* ============================================================
    20. promotion_path (홍보물 경로) – project FK
 ============================================================ */
-CREATE TABLE promotion_path (
+CREATE TABLE IF NOT EXISTS promotion_path (
     promotion_path_no INT AUTO_INCREMENT PRIMARY KEY,
     p_no INT NOT NULL,
     db_file_path VARCHAR(512) NOT NULL,
