@@ -27,4 +27,8 @@ public interface MemberMapper {
     int updateRole(@Param("mNo") String mNo, @Param("role") String role);
 
     int updateState(@Param("mNo") String mNo, @Param("state") String state);
+
+    int updateProfile(@Param("mNo") String mNo, @Param("name") String name, @Param("phone") String phone);
+
+    int updatePassword(@Param("mNo") String mNo, @Param("passwordHash") String passwordHash);
 }

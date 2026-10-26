@@ -1,5 +1,7 @@
 package com.assistant.acc.service.auth;
 
+import com.assistant.acc.dto.auth.AuthDtos.PasswordRequest;
+import com.assistant.acc.dto.auth.AuthDtos.ProfileRequest;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -81,6 +83,44 @@ public class AuthService {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "테스트 계정이 준비되지 않았습니다.");
         }
         return session(m);
+    }
+
+    /** 이름/연락처 수정. 모두가 함께 쓰는 test 계정은 변경할 수 없다 */
+    public Map<String, Object> updateProfile(String mNo, ProfileRequest req) {
+        Member m = requireEditable(mNo);
+        String name = req.getName() == null ? "" : req.getName().trim();
+        if (name.isEmpty() || name.length() > 50) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이름은 1~50자로 입력해주세요.");
+        }
+        String phone = req.getPhone() == null ? "" : req.getPhone().trim();
+        if (phone.length() > 50) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "연락처가 너무 깁니다.");
+        }
+        memberMapper.updateProfile(m.getMNo(), name, phone);
+        return view(memberMapper.findByNo(mNo));
+    }
+
+    public void changePassword(String mNo, PasswordRequest req) {
+        Member m = requireEditable(mNo);
+        if (req.getCurrentPassword() == null || m.getPasswordHash() == null
+                || !passwordEncoder.matches(req.getCurrentPassword(), m.getPasswordHash())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "현재 비밀번호가 올바르지 않습니다.");
+        }
+        if (req.getNewPassword() == null || req.getNewPassword().length() < 8) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "새 비밀번호는 8자 이상이어야 합니다.");
+        }
+        memberMapper.updatePassword(mNo, passwordEncoder.encode(req.getNewPassword()));
+    }
+
+    private Member requireEditable(String mNo) {
+        Member m = memberMapper.findByNo(mNo);
+        if (m == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "회원 정보를 찾을 수 없습니다.");
+        }
+        if (Member.ROLE_TEST.equals(m.getRole())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "테스트 계정은 정보를 변경할 수 없습니다.");
+        }
+        return m;
     }
 
     public Map<String, Object> me(String mNo) {

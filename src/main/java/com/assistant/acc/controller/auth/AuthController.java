@@ -1,5 +1,8 @@
 package com.assistant.acc.controller.auth;
 
+import com.assistant.acc.dto.auth.AuthDtos.PasswordRequest;
+import com.assistant.acc.dto.auth.AuthDtos.ProfileRequest;
+import org.springframework.web.bind.annotation.PatchMapping;
 import java.util.Map;
 
 import org.springframework.web.bind.annotation.GetMapping;
@@ -47,5 +50,16 @@ public class AuthController {
     @GetMapping("/me")
     public Map<String, Object> me() {
         return authService.me(CurrentMember.no());
+    }
+
+    @PatchMapping("/me")
+    public Map<String, Object> updateMe(@RequestBody ProfileRequest req) {
+        return authService.updateProfile(CurrentMember.no(), req);
+    }
+
+    @PostMapping("/password")
+    public Map<String, Object> changePassword(@RequestBody PasswordRequest req) {
+        authService.changePassword(CurrentMember.no(), req);
+        return Map.of("changed", true);
     }
 }

@@ -31,6 +31,20 @@ public final class AuthDtos {
 
     @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class ProfileRequest {
+        private String name;
+        private String phone;
+    }
+
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class PasswordRequest {
+        private String currentPassword;
+        private String newPassword;
+    }
+
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class RoleRequest {
         private String role;
     }

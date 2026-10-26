@@ -43,6 +43,14 @@
         UPDATE member SET role = #{role} WHERE m_no = #{mNo}
     </update>
 
+    <update id="updateProfile">
+        UPDATE member SET m_name = #{name}, m_phone = #{phone} WHERE m_no = #{mNo}
+    </update>
+
+    <update id="updatePassword">
+        UPDATE member SET password_hash = #{passwordHash} WHERE m_no = #{mNo}
+    </update>
+
     <update id="updateState">
         UPDATE member SET state = #{state} WHERE m_no = #{mNo}
     </update>
