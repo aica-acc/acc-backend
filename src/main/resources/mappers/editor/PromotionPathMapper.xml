@@ -14,6 +14,8 @@
         <result property="createAt"        column="create_at"/>
     </resultMap>
 
+    <!-- 프로젝트마다 유형별 한 행 (V5 유니크 제약). 같은 유형을 다시 저장하면 경로를 교체한다
+         (파생 만들기를 다시 시도해도 베이스 포스터/마스코트가 중복으로 쌓이지 않음) -->
     <insert id="insertPromotionPath" parameterType="com.assistant.acc.dto.editor.PromotionPathDTO">
         INSERT INTO promotion_path (
             p_no,
@@ -26,6 +28,9 @@
             #{dbFileType},
             #{createAt}
         )
+        ON DUPLICATE KEY UPDATE
+            db_file_path = VALUES(db_file_path),
+            create_at = VALUES(create_at)
     </insert>
 
     <select id="findAllByPNo" resultType="com.assistant.acc.dto.editor.PromotionPathDTO">
