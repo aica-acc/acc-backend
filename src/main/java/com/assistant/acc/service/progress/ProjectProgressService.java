@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.assistant.acc.domain.project.ProposalMetadata;
 import com.assistant.acc.mapper.project.ProjectMapper;
+import com.assistant.acc.service.file.FileService;
 import com.assistant.acc.security.CurrentMember;
 import com.assistant.acc.security.ProjectAccess;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -40,6 +41,7 @@ public class ProjectProgressService {
     private final ObjectMapper objectMapper;
     private final ProjectMapper projectMapper;
     private final ProjectAccess projectAccess;
+    private final FileService fileService;
 
     @Data
     public static class Progress {
@@ -126,6 +128,16 @@ public class ProjectProgressService {
         // 기획서 정보는 DB 가 원본이다. 화면에서 수정해 저장한 값이 없을 때만 채운다
         if (metadata != null && !progress.getState().containsKey("proposalData")) {
             progress.getState().put("proposalData", toJson(metadata));
+        }
+        // 생성 이미지 목록도 DB 가 원본이다. 진행 기록에 없으면(이전 버전 프로젝트) DB 에서 채운다
+        for (String type : List.of("poster", "mascot")) {
+            String key = type + "ThumbnailList";
+            if (!progress.getState().containsKey(key)) {
+                List<?> list = fileService.getAssetElementsListByProject(pNo, type);
+                if (!list.isEmpty()) {
+                    progress.getState().put(key, toJson(list));
+                }
+            }
         }
         progress.setPNo(pNo);
         progress.setTitle(metadata == null ? null : metadata.getTitle());
