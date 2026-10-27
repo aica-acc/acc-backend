@@ -15,6 +15,7 @@ import com.assistant.acc.mapper.project.ProjectMapper;
 import com.assistant.acc.service.file.FileService;
 import com.assistant.acc.security.CurrentMember;
 import com.assistant.acc.security.ProjectAccess;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -54,6 +55,8 @@ public class ProjectProgressService {
     }
 
     @Data
+    // 프론트 공용 axios(BaseAPI)가 모든 JSON 본문에 m_no 를 붙이므로 모르는 필드는 무시한다
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class ProgressUpdate {
         /** 추가·변경할 키 (값은 JSON 문자열) */
         private Map<String, String> set;
