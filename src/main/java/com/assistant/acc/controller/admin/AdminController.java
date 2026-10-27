@@ -39,7 +39,7 @@ public class AdminController {
 
     @GetMapping("/members")
     public List<Map<String, Object>> members() {
-        return memberMapper.findAll().stream().map(AuthService::view).collect(Collectors.toList());
+        return memberMapper.findAll().stream().map(AuthService::adminView).collect(Collectors.toList());
     }
 
     @PatchMapping("/members/{mNo}/role")
@@ -53,7 +53,7 @@ public class AdminController {
         }
         requireMember(mNo);
         memberMapper.updateRole(mNo, req.getRole());
-        return AuthService.view(memberMapper.findByNo(mNo));
+        return AuthService.adminView(memberMapper.findByNo(mNo));
     }
 
     @PatchMapping("/members/{mNo}/state")
@@ -66,7 +66,7 @@ public class AdminController {
         }
         requireMember(mNo);
         memberMapper.updateState(mNo, req.getState());
-        return AuthService.view(memberMapper.findByNo(mNo));
+        return AuthService.adminView(memberMapper.findByNo(mNo));
     }
 
     /** 회원의 프로젝트(및 하위 생성물 DB 기록)를 모두 삭제. 기본 대상은 test 계정 */

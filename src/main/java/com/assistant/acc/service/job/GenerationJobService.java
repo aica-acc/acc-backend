@@ -139,11 +139,27 @@ public class GenerationJobService {
                     objectMapper.writeValueAsString(result), jobId);
             log.info("[job] 완료 jobId={}", jobId);
         } catch (Exception e) {
-            String msg = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
+            // 화면에 보이는 값이라 예외 원문(서버 경로, 내부 주소, 회원번호가 섞임)은 로그에만 남긴다
             jdbc.update("UPDATE generation_job SET status = 'FAILED', error = ?, finished_at = NOW() WHERE job_id = ?",
-                    msg.length() > 2000 ? msg.substring(0, 2000) : msg, jobId);
+                    userMessage(e), jobId);
             log.error("[job] 실패 jobId={}", jobId, e);
         }
+    }
+
+    /** 사용자에게 보여 줄 실패 사유 */
+    private static String userMessage(Throwable e) {
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            if (t instanceof ResponseStatusException rse && rse.getReason() != null) {
+                return rse.getReason();
+            }
+            if (t instanceof org.springframework.web.client.ResourceAccessException) {
+                return "AI 서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.";
+            }
+            if (t instanceof org.springframework.web.client.HttpStatusCodeException) {
+                return "AI 서버에서 생성에 실패했습니다. 잠시 후 다시 시도해 주세요.";
+            }
+        }
+        return "생성 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.";
     }
 
     /** 작업 조회 (본인 작업만) */

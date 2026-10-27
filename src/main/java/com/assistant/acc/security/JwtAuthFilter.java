@@ -41,7 +41,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         if (header != null && header.startsWith("Bearer ")) {
             Claims claims = tokens.parse(header.substring(7).trim());
             if (claims != null) {
-                Member m = members.findByNo(claims.getSubject());
+                String mNo = tokens.memberNo(claims);
+                Member m = mNo == null ? null : members.findByNo(mNo);
                 if (m != null && m.isActive()) {
                     request.setAttribute("m_no", m.getMNo());
                     request.setAttribute("role", m.getRole());

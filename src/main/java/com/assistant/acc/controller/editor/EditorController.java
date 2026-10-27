@@ -72,7 +72,13 @@ public class EditorController {
         projectAccess.check(pNo);
         try {
             Map<String, Object> m = restTemplate.getForObject(pythonApiUrl + "/editor/derivatives/" + pNo, Map.class);
-            return m == null ? Map.of() : m;
+            if (m == null) {
+                return Map.of();
+            }
+            // AI 는 "…/data/promotion/ 이후" 경로를 준다. 웹 경로로 맞춰야 응답에서 화면의 파일 주소(/files/토큰)와 같은 값이 된다
+            Map<String, Object> out = new HashMap<>();
+            m.forEach((type, base) -> out.put((String) type, "/data/promotion/" + base));
+            return out;
         } catch (Exception e) {
             log.warn("파생물 목록 조회 실패 pNo={} ({})", pNo, e.getMessage());
             return Map.of();

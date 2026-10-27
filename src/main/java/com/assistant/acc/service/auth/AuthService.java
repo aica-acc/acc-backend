@@ -175,15 +175,23 @@ public class AuthService {
         return res;
     }
 
+    /** 본인에게 주는 회원 정보. 회원번호는 내부 식별자라 브라우저에 보내지 않는다 */
     public static Map<String, Object> view(Member m) {
         Map<String, Object> v = new LinkedHashMap<>();
-        v.put("mNo", m.getMNo());
         v.put("email", m.getEmail());
         v.put("name", m.getName());
         v.put("phone", m.getPhone());
         v.put("role", m.getRole());
         v.put("state", m.getState());
         v.put("createAt", m.getCreateAt() == null ? null : m.getCreateAt().toString());
+        return v;
+    }
+
+    /** 관리자 화면용: 회원을 지정해 권한·상태를 바꿔야 하므로 회원번호를 포함한다 */
+    public static Map<String, Object> adminView(Member m) {
+        Map<String, Object> v = new LinkedHashMap<>();
+        v.put("mNo", m.getMNo());
+        v.putAll(view(m));
         return v;
     }
 }

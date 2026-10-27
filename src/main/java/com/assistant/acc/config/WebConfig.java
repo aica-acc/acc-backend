@@ -13,7 +13,6 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.*;
 
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
-import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -29,26 +28,11 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
-    // 포스터 아카이브 이미지 폴더 (상대경로면 실행 위치 기준)
-    @Value("${files.poster-images-dir:./홍보물}")
-    private String posterImagesDir;
-
     @Value("${cors.allowed-origin-patterns:http://localhost:*,http://127.0.0.1:*}")
     private String[] allowedOriginPatterns;
 
-    @Override
-    public void addResourceHandlers(ResourceHandlerRegistry registry) {
-
-        String imagePath = java.nio.file.Paths.get(posterImagesDir).toAbsolutePath().toUri().toString();
-        if (!imagePath.endsWith("/")) {
-            imagePath += "/";
-        }
-
-        log.info("🚀 정적 이미지 리소스 핸들러 등록: /poster-images/** -> " + imagePath);
-
-        registry.addResourceHandler("/poster-images/**") // (웹 주소: /poster-images/)
-                .addResourceLocations(imagePath);        // (실제 경로: C:/.../홍보물/
-    }
+    // 생성 이미지는 /files/{토큰} (PublicFileController) 으로만 내보낸다.
+    // 예전 공개 경로 /poster-images/**, /static/** 는 회원번호·프로젝트 번호가 드러나고 추측으로 남의 파일을 열 수 있어 없앴다.
 
     // 로그인 없이 접근 가능한 경로
     private static final String[] PUBLIC_PATHS = {
@@ -57,8 +41,7 @@ public class WebConfig implements WebMvcConfigurer {
             "/api/auth/signup",
             "/api/auth/login",
             "/api/auth/test-login",
-            "/poster-images/**",
-            "/static/**"   // AI 서버 정적 파일 중계 (AiStaticProxyController)
+            "/files/**"   // 브라우저용 파일 주소 (<img src> 라 토큰 없이. 주소 자체가 추측 불가)
     };
 
     @Bean
