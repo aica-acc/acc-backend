@@ -10,6 +10,7 @@ import com.assistant.acc.service.editor.EditorAiRenderService;
 import com.assistant.acc.service.editor.EditorBuildService;
 import com.assistant.acc.service.editor.EditorImageSaveService;
 import com.assistant.acc.service.editor.EditorTemplateService;
+import com.assistant.acc.security.ProjectAccess;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -29,6 +30,7 @@ public class EditorController {
     private final EditorTemplateService editorTemplateService;
     private final EditorAiRenderService editorAiRenderService;
     private final EditorImageSaveService editorImageSaveService;
+    private final ProjectAccess projectAccess;
 
     // ==============================
     // 1) 템플릿 빌드
@@ -66,6 +68,7 @@ public class EditorController {
         log.info("🎨 [EditorController] /build pNo={}, rawPostersJson.length={}",
                 pNo, postersJson != null ? postersJson.length() : 0);
 
+        projectAccess.check(pNo);
         EditorBuildResponse response = editorBuildService.buildAndSaveTemplates(pNo, postersJson);
         return ResponseEntity.ok(response);
         }
@@ -86,6 +89,7 @@ public class EditorController {
         log.info("📥 [EditorController] GET /template-json pNo={}", pNo);
 
         // 1) 최신 템플릿 row 가져오기
+        projectAccess.check(pNo);
         EditorTemplate template = editorTemplateService.getLatestTemplate(pNo);
         if (template == null) {
                 return ResponseEntity.notFound().build();
@@ -155,6 +159,7 @@ public class EditorController {
         log.info("💾 [EditorController] /save-image pNo={}, dbFileType={}",
                 request.getPNo(), request.getDbFileType());
 
+        projectAccess.check(request.getPNo());
         SaveImageResponse response = editorImageSaveService.saveEditorImage(
                 request.getPNo(),
                 request.getImageBase64(),
