@@ -329,6 +329,9 @@ public class FileStorageService {
             throw new IllegalStateException("Python 폴더에 " + promotionType + " 이미지가 없습니다.");
         }
 
+        // listFiles 는 순서를 보장하지 않는다. 파일명({type}_{시각}_{순번}.png) 순으로 정렬해야
+        // 호출부에서 프롬프트 순서와 짝이 맞는다.
+        java.util.Arrays.sort(files, java.util.Comparator.comparing(File::getName));
         return files;
     }
 }
