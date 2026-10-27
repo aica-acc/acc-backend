@@ -35,6 +35,12 @@ public class FileServiceImpl implements FileService{
     }
 
     @Override
+    public List<AssetElement> getAssetElementsListByProject(Integer projectNo, String type) {
+        return assetsMapper.selectAssetElementList(
+                AssetQueryRequest.builder().projectNo(projectNo).type(type).build());
+    }
+
+    @Override
     public AssetDetail getAssetDetail(Integer filePathNo, Integer promptNo) {
         System.out.println("서비스 실행");
         System.out.println("파일번호" + filePathNo);

@@ -1,5 +1,6 @@
 package com.assistant.acc.controller.mypage;
 
+import com.assistant.acc.security.CurrentMember;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -60,14 +61,12 @@ public class MypageProjectController {
 
     /**
      * 프로젝트 목록 조회
-     * GET /api/mypage/projects?m_no=M000001
+     * GET /api/mypage/projects  (로그인한 회원의 프로젝트만 조회)
      */
     @GetMapping("/projects")
-    public ResponseEntity<List<ProjectSummaryDTO>> getProjects(
-            @RequestParam(name = "m_no", required = false) String mNo
-    ) {
+    public ResponseEntity<List<ProjectSummaryDTO>> getProjects() {
         // 람다에서 쓸 값은 한 번만 정해서 final 처럼 쓰기
-        final String memberNo = (mNo == null || mNo.isBlank()) ? "M000001" : mNo;
+        final String memberNo = CurrentMember.no();
 
         log.info("📂 [MypageProjectController] 프로젝트 목록 조회, m_no={}", memberNo);
 
@@ -147,6 +146,63 @@ public class MypageProjectController {
         return dto;
     }
 
+    // ----------------- 저장소(내 모든 홍보물) -----------------
+
+    /** 저장소 화면의 한 항목 */
+    @Data
+    public static class DriveAssetDTO {
+        private Integer assetId;
+        private Integer projectId;
+        private String festivalName;
+        private String typeCode;
+        private String typeLabel;
+        private String imageUrl;
+        private LocalDate createdAt;
+    }
+
+    /**
+     * 내가 만든 모든 프로젝트의 홍보물(파생물) 목록
+     * GET /api/mypage/assets
+     */
+    @GetMapping("/assets")
+    public ResponseEntity<List<DriveAssetDTO>> getMyAssets() {
+        final String memberNo = CurrentMember.no();
+        String sql = """
+            SELECT
+                pp.promotion_path_no,
+                pp.p_no,
+                pm.title,
+                pp.db_file_type,
+                pp.db_file_path,
+                pp.create_at
+            FROM promotion_path pp
+            JOIN project p ON p.p_no = pp.p_no
+            LEFT JOIN proposal_metadata pm ON pm.p_no = p.p_no
+            WHERE p.m_no = ?
+            ORDER BY pp.promotion_path_no DESC
+            """;
+        List<DriveAssetDTO> list = jdbcTemplate.query(
+                sql,
+                ps -> ps.setString(1, memberNo),
+                (rs, rowNum) -> {
+                    DriveAssetDTO a = new DriveAssetDTO();
+                    a.setAssetId(rs.getInt("promotion_path_no"));
+                    a.setProjectId(rs.getInt("p_no"));
+                    a.setFestivalName(rs.getString("title"));
+                    String typeCode = rs.getString("db_file_type");
+                    a.setTypeCode(typeCode);
+                    a.setTypeLabel(toTypeLabel(typeCode));
+                    a.setImageUrl(toWebPath(rs.getString("db_file_path")));
+                    java.sql.Date created = rs.getDate("create_at");
+                    if (created != null) {
+                        a.setCreatedAt(created.toLocalDate());
+                    }
+                    return a;
+                }
+        );
+        return ResponseEntity.ok(list);
+    }
+
     // ----------------- 프로젝트 상세 -----------------
 
     /**
@@ -158,6 +214,16 @@ public class MypageProjectController {
             @PathVariable("projectId") Integer projectId
     ) {
         log.info("📂 [MypageProjectController] 프로젝트 상세 조회, p_no={}", projectId);
+
+        // 본인 프로젝트(또는 관리자)만 조회 가능
+        if (!CurrentMember.isAdmin()) {
+            Integer owned = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM project WHERE p_no = ? AND m_no = ?",
+                    Integer.class, projectId, CurrentMember.no());
+            if (owned == null || owned == 0) {
+                return ResponseEntity.status(403).build();
+            }
+        }
 
         // 1) 상단 정보 (축제명, 기간, 장소, 홍보물 개수)
         String headerSql = """

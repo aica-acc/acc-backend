@@ -70,8 +70,14 @@ public class PromotionAPIServiceImpl implements PromotionAPIService {
     @Override
     @Transactional
     public List<Prompt> generatePrompts(String memberNo, Map<String, Object> trendData, String promotionType) {
+        return generatePrompts(memberNo, null, trendData, promotionType);
+    }
+
+    @Override
+    @Transactional
+    public List<Prompt> generatePrompts(String memberNo, Integer pNo, Map<String, Object> trendData, String promotionType) {
         // 1. 공통 요소 추출
-        GenerateElement el = getElement(memberNo);
+        GenerateElement el = getElement(memberNo, pNo);
 
         // 2. 중복 생성 방지 (타입별 조회)
         List<Prompt> existingPrompts = promptMapper.selectPromptsByType(
@@ -129,10 +135,15 @@ public class PromotionAPIServiceImpl implements PromotionAPIService {
         return saved;
     }
 
-    private GenerateElement getElement(String memberNo) {
+    /**
+     * 생성에 필요한 프로젝트 정보.
+     * pNo 를 주면 그 프로젝트, 없으면 회원의 최신 프로젝트 (예전 동작).
+     * 백그라운드 작업 스레드에서도 쓰이므로 요청 정보(CurrentMember)를 쓰지 않는다.
+     */
+    private GenerateElement getElement(String memberNo, Integer requestedPNo) {
         // 프로젝트 번호 로드
         System.out.println("서비스 조회 memberNo" + memberNo);
-        Integer pNo = projectMapper.selectLatestProjectNo(memberNo);
+        Integer pNo = requestedPNo != null ? requestedPNo : projectMapper.selectLatestProjectNo(memberNo);
         if (pNo == null) {
             throw new IllegalStateException("프로젝트가 없습니다. m_no: " + memberNo);
         }
@@ -146,7 +157,9 @@ public class PromotionAPIServiceImpl implements PromotionAPIService {
 
         // 2. metadata 조회
         System.out.println("2. metadata 조회");
-        ProposalMetadata meta = proposalMetadataService.getLatestProposalMetadata();
+        // (예전: getLatestProposalMetadata() — 요청의 로그인 정보로 '최신 프로젝트'를 찾아, 작업 스레드에서 실패하고
+        //  다른 프로젝트를 이어서 할 때 엉뚱한 기획서를 썼다)
+        ProposalMetadata meta = projectMapper.selectProposalMetadata(pNo);
         if (meta == null) {
             throw new IllegalStateException("proposal_metadata 없음 p_no=" + pNo);
         }
@@ -182,8 +195,15 @@ public class PromotionAPIServiceImpl implements PromotionAPIService {
     @Transactional
     public CreateImageResultResponse createPosterImages(String memberNo, Map<String, Object> trendData,
                                                         String promotionType) {
+        return createPosterImages(memberNo, null, trendData, promotionType);
+    }
+
+    @Override
+    @Transactional
+    public CreateImageResultResponse createPosterImages(String memberNo, Integer requestedPNo, Map<String, Object> trendData,
+                                                        String promotionType) {
         // 1. 공통 요소 추출
-        GenerateElement el = getElement(memberNo);
+        GenerateElement el = getElement(memberNo, requestedPNo);
 
         // ⭐ 2-1. DB 체크: 이미 저장된 이미지가 있는지 확인
         if (checkIfImagesExistInDB(el.getProjectNo(), promotionType)) {

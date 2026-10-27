@@ -1,5 +1,6 @@
 package com.assistant.acc.service.poster.regenerate.utils;
 
+import org.springframework.beans.factory.annotation.Value;
 import com.assistant.acc.domain.poster.Regenerate;
 import com.assistant.acc.domain.project.ProposalMetadata;
 import com.assistant.acc.dto.create.poster.CreateImageRequestDto;
@@ -18,6 +19,9 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class RegeneratePythonService {
+
+    @Value("${python.api.url:http://localhost:5000}")
+    private String pythonApiUrl;
 
     private final RestTemplate restTemplate;
     private final ProjectMapper projectMapper;
@@ -45,7 +49,7 @@ public class RegeneratePythonService {
 
         // 5. Python 호출
         CreateImageResultResponse response = restTemplate.postForObject(
-                "http://127.0.0.1:5000/create-image",
+                pythonApiUrl + "/create-image",
                 req,
                 CreateImageResultResponse.class
         );

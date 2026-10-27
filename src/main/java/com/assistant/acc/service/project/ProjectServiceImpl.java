@@ -1,5 +1,7 @@
 package com.assistant.acc.service.project;
 
+import com.assistant.acc.security.CurrentMember;
+import org.springframework.beans.factory.annotation.Value;
 import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -37,12 +39,12 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 public class ProjectServiceImpl implements ProjectService {
 
+    @Value("${python.api.url:http://localhost:5000}")
+    private String pythonApiUrl;
+
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
     private final ProjectMapper projectMapper;
-
-    // 고정 회원 ID
-    private static final String DEFAULT_MEMBER_NO = "M000001";
 
     public ProjectServiceImpl(RestTemplate restTemplate, ProjectMapper projectMapper, ObjectMapper objectMapper) {
         this.restTemplate = restTemplate;
@@ -57,7 +59,7 @@ public class ProjectServiceImpl implements ProjectService {
     @Transactional
     public Project createProjectAndSaveInput(String theme, String keywords, String title, String memeberId) {
         Project newProject = new Project();
-        newProject.setMemberNo("M000001");
+        newProject.setMemberNo(memeberId);
         projectMapper.insertProject(newProject);
         Integer newPNo = newProject.getProjectNo();
 
@@ -90,7 +92,7 @@ public class ProjectServiceImpl implements ProjectService {
     public ProposalMetadata getLatestProposalMetadata() {
 
         // 1) 최신 프로젝트 번호 조회
-        Integer latestPno = projectMapper.selectLatestProjectNo(DEFAULT_MEMBER_NO);
+        Integer latestPno = projectMapper.selectLatestProjectNo(CurrentMember.no());
         System.out.println("latestPno: " + latestPno);
         if (latestPno == null) {
             return null;
@@ -121,7 +123,7 @@ public class ProjectServiceImpl implements ProjectService {
 
         // 1) 새로운 Project 생성
         System.out.println("[Service - Step 1] 프로젝트 생성 시작...");
-        String memberId = DEFAULT_MEMBER_NO;
+        String memberId = CurrentMember.no();
         Project project = createProjectAndSaveInput(theme, keywords, title, memberId);
         Integer pNo = project.getProjectNo();
         System.out.println("[Service - Step 1] ✅ 프로젝트 생성 완료, pNo = " + pNo);
@@ -147,10 +149,10 @@ public class ProjectServiceImpl implements ProjectService {
 
         // 2-2) Python 분석 요청
         System.out.println("[Service - Step 3] Python 서버 호출 시작...");
-        System.out.println("  URL: http://localhost:5000/analyze/proposal");
+        System.out.println("  URL: " + pythonApiUrl + "/analyze/proposal");
 
         ResponseEntity<String> response = restTemplate.postForEntity(
-                "http://localhost:5000/analyze/proposal",
+                pythonApiUrl + "/analyze/proposal",
                 request,
                 String.class);
 
@@ -216,61 +218,71 @@ public class ProjectServiceImpl implements ProjectService {
     /**
      * 날짜 파싱 (private 헬퍼)
      */
+    // [연도 구분자]? 월 구분자 일. 연도는 4자리 또는 '21 형태. 구분자는 . - / 또는 년·월
+    private static final java.util.regex.Pattern DATE_PART = java.util.regex.Pattern.compile(
+            "(?:(\\d{4}|['’‘]\\d{2})\\s*[.\\-/년]\\s*)?(\\d{1,2})\\s*[.\\-/월]\\s*(\\d{1,2})(?!\\d)\\s*일?");
+    private static final java.util.regex.Pattern YEAR = java.util.regex.Pattern.compile("(?<!\\d)(19|20)\\d{2}(?!\\d)");
+
+    /**
+     * 날짜 파싱 (private 헬퍼)
+     * AI 가 돌려주는 형식이 일정하지 않아 여러 표기를 받는다.
+     *  "2023.05.19 ~ 2023.05.21", "2023년 5월 19일(금) ~ 5월 21일(일), 3일간",
+     *  "’21.10.1.(금) ~ 10.2.(토)", "2025.12.28 ~ 1.3"(해 넘김) 등.
+     * 첫 날짜를 시작일, 마지막 날짜를 종료일로 쓰고, 종료일에 연도가 없으면 시작일 연도를 따른다.
+     * 날짜를 하나도 찾지 못하면 DB 오류 방지를 위해 오늘 날짜로 대체한다.
+     */
     private List<Date> parseDateRange(String rawDateText) {
-        // (null 방지를 위해 기본값 null 대신 빈 리스트와 오늘 날짜로 초기화)
-        if (rawDateText == null || rawDateText.trim().isEmpty()) {
-            System.err.println("날짜 파싱 실패: 원본 텍스트가 비어있습니다.");
-            Date now = new Date();
-            return Arrays.asList(now, now); // 즉시 오늘 날짜 반환
-        }
-
         System.out.println("날짜 데이터 (원본): " + rawDateText);
-        List<Date> resultDates = new ArrayList<>();
-        Date parsedStartDate = null;
-        Date parsedEndDate = null;
+        java.time.LocalDate[] range = rawDateText == null ? null : parseDateParts(rawDateText);
+        if (range == null) {
+            System.err.println("날짜 파싱 실패, 오늘 날짜로 대체: " + rawDateText);
+            Date now = new Date();
+            return Arrays.asList(now, now);
+        }
+        return Arrays.asList(java.sql.Date.valueOf(range[0]), java.sql.Date.valueOf(range[1]));
+    }
 
-        try {
-            // 1. 공백이 없는 패턴 (yyyy.MM.dd)
-            SimpleDateFormat formatter = new SimpleDateFormat("yyyy.MM.dd");
-            String[] dates = rawDateText.split("~");
-
-            // 3. 시작 날짜 정제
-            String startDateString = dates[0]
-                    .replaceAll("\\(.*?\\)", "") // (요일) 제거
-                    .replaceAll("/.*", "") // " / n일간" 제거
-                    .trim() // 공백 제거
-                    .replaceFirst("\\.$", ""); // 마지막 점 제거
-
-            parsedStartDate = formatter.parse(startDateString);
-
-            if (dates.length > 1) {
-                // 5. 종료 날짜 정제
-                String endDateString = dates[1]
-                        .replaceAll("\\(.*?\\)", "")
-                        .replaceAll("/.*", "")
-                        .trim()
-                        .replaceFirst("\\.$", ""); // 마지막 점 제거
-
-                // 6. 연도 자동 추가 로직 (12.25 -> 2025.12.25)
-                if (endDateString.indexOf('.') == endDateString.lastIndexOf('.')) {
-                    String year = startDateString.substring(0, 4);
-                    endDateString = year + "." + endDateString;
-                }
-                parsedEndDate = formatter.parse(endDateString);
-            } else {
-                parsedEndDate = parsedStartDate;
+    private java.time.LocalDate[] parseDateParts(String raw) {
+        java.util.regex.Matcher m = DATE_PART.matcher(raw);
+        List<int[]> parts = new ArrayList<>(); // {연도(없으면 -1), 월, 일}
+        while (m.find()) {
+            int year = -1;
+            if (m.group(1) != null) {
+                String digits = m.group(1).replaceAll("[^0-9]", "");
+                year = digits.length() == 2 ? 2000 + Integer.parseInt(digits) : Integer.parseInt(digits);
             }
+            int month = Integer.parseInt(m.group(2));
+            int day = Integer.parseInt(m.group(3));
+            if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+                parts.add(new int[] { year, month, day });
+            }
+        }
+        if (parts.isEmpty()) {
+            return null;
+        }
+        int[] start = parts.get(0);
+        int[] end = parts.get(parts.size() - 1);
 
-        } catch (ParseException | ArrayIndexOutOfBoundsException e) {
-            System.err.println("날짜 파싱 실패: " + rawDateText + " | " + e.getMessage());
+        int startYear = start[0];
+        if (startYear < 0) {
+            java.util.regex.Matcher ym = YEAR.matcher(raw);
+            if (!ym.find()) {
+                return null;
+            }
+            startYear = Integer.parseInt(ym.group());
         }
-        // 7 - DB 오류 방지 코드
-        if (parsedStartDate == null) {
-            parsedStartDate = new Date();
+        int endYear = end[0] >= 0 ? end[0] : startYear;
+        // 종료일 연도가 생략됐는데 시작일보다 앞서면 해를 넘긴 축제 (12.28 ~ 1.3)
+        if (end[0] < 0 && (end[1] < start[1] || (end[1] == start[1] && end[2] < start[2]))) {
+            endYear = startYear + 1;
         }
-        resultDates.add(parsedStartDate);
-        resultDates.add(parsedEndDate != null ? parsedEndDate : parsedStartDate);
-        return resultDates;
+        try {
+            return new java.time.LocalDate[] {
+                    java.time.LocalDate.of(startYear, start[1], start[2]),
+                    java.time.LocalDate.of(endYear, end[1], end[2]) };
+        } catch (java.time.DateTimeException e) {
+            return null; // 2월 30일 같은 잘못된 날짜
+        }
     }
 
     @Override
@@ -294,7 +306,7 @@ public class ProjectServiceImpl implements ProjectService {
             HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(formData, headers);
 
             // 4️⃣ Python FastAPI 호출
-            String pythonUrl = "http://localhost:5000/analyze/total_trend";
+            String pythonUrl = pythonApiUrl + "/analyze/total_trend";
 
             Map<String, Object> result = restTemplate.postForObject(
                     pythonUrl,
@@ -349,6 +361,8 @@ public class ProjectServiceImpl implements ProjectService {
             MultiValueMap<String, Object> formData = new LinkedMultiValueMap<>();
             formData.add("keyword", keyword);
             formData.add("host", host);
+            // 주최가 비어 있으면('정보 없음') AI 가 장소로 지역(시·군)을 추정한다
+            formData.add("location", meta.getLocation() == null ? "" : meta.getLocation());
             formData.add("title", title);
             formData.add("festivalStartDate", festivalStartDate);
 
@@ -360,7 +374,7 @@ public class ProjectServiceImpl implements ProjectService {
             HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(formData, headers);
 
             // 4. 파이썬 서버 호출
-            String pythonUrl = "http://localhost:5000/analyze/region_trend";
+            String pythonUrl = pythonApiUrl + "/analyze/region_trend";
 
             ResponseEntity<RegionTrendResponseDTO> response = restTemplate.postForEntity(
                     pythonUrl,
