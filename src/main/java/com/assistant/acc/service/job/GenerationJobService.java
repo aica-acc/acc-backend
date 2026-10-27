@@ -8,6 +8,8 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -42,6 +44,12 @@ import lombok.extern.slf4j.Slf4j;
 public class GenerationJobService {
 
     public static final String EDITOR_BUILD = "EDITOR_BUILD";
+    public static final String CREATE_IMAGES = "CREATE_IMAGES";
+
+    // 백엔드가 직접 단계를 진행하는 작업의 진행 상황 (작업 번호 → 진행). 서버 메모리에만 둔다
+    private final Map<Long, JobProgress> progresses = new ConcurrentHashMap<>();
+    // 단계별 실제 소요 시간 평균 (다음 작업의 예상 시간). 기본값은 첫 작업 전 추정치
+    private final Map<String, Double> learnedSeconds = new ConcurrentHashMap<>();
 
     private final JdbcTemplate jdbc;
     private final ObjectMapper objectMapper;
@@ -78,6 +86,11 @@ public class GenerationJobService {
 
     /** 작업 시작. work 는 별도 스레드에서 실행되므로 요청 정보(CurrentMember 등)를 쓰면 안 된다 */
     public Job start(int pNo, String mNo, String kind, Supplier<Object> work) {
+        return start(pNo, mNo, kind, progress -> work.get());
+    }
+
+    /** 단계별 진행을 기록하는 작업 (progress.step(...) 으로 단계를 등록하고 progress.run(...) 으로 실행) */
+    public Job start(int pNo, String mNo, String kind, Function<JobProgress, Object> work) {
         List<Long> running = jdbc.queryForList(
                 "SELECT job_id FROM generation_job WHERE p_no = ? AND kind = ? AND status IN ('QUEUED','RUNNING') "
                         + "ORDER BY job_id DESC LIMIT 1",
@@ -100,14 +113,28 @@ public class GenerationJobService {
         long jobId = key.getKey().longValue();
         log.info("[job] 시작 jobId={}, pNo={}, kind={}", jobId, pNo, kind);
 
-        executor.execute(() -> run(jobId, work));
+        JobProgress progress = new JobProgress();
+        progresses.put(jobId, progress);
+        executor.execute(() -> run(jobId, progress, work));
         return load(jobId, false);
     }
 
-    private void run(long jobId, Supplier<Object> work) {
+    /** 단계 예상 시간: 이전 작업들의 실제 평균, 없으면 기본값 */
+    public double expectSeconds(String step, double defaultSeconds) {
+        return learnedSeconds.getOrDefault(step, defaultSeconds);
+    }
+
+    private void run(long jobId, JobProgress progress, Function<JobProgress, Object> work) {
         jdbc.update("UPDATE generation_job SET status = 'RUNNING', started_at = NOW() WHERE job_id = ?", jobId);
         try {
-            Object result = work.get();
+            Object result = work.apply(progress);
+            progress.finish();
+            // 실제 소요 시간을 다음 예상치에 반영 (이동 평균). 기존 결과를 써서 바로 끝난 단계(3초 이하)는 제외
+            progress.durations().forEach((step, sec) -> {
+                if (sec > 3) {
+                    learnedSeconds.merge(step, sec, (old, cur) -> old * 0.6 + cur * 0.4);
+                }
+            });
             jdbc.update("UPDATE generation_job SET status = 'SUCCEEDED', result = ?, finished_at = NOW() WHERE job_id = ?",
                     objectMapper.writeValueAsString(result), jobId);
             log.info("[job] 완료 jobId={}", jobId);
@@ -169,8 +196,12 @@ public class GenerationJobService {
 
     private Job load(long jobId, boolean withProgress) {
         Job job = jdbc.query("SELECT * FROM generation_job WHERE job_id = ?", rs -> rs.next() ? map(rs) : null, jobId);
-        if (job != null && withProgress && EDITOR_BUILD.equals(job.getKind())) {
-            job.setProgress(fetchEditorBuildProgress(job.getPNo()));
+        if (job != null && withProgress) {
+            if (EDITOR_BUILD.equals(job.getKind())) {
+                job.setProgress(fetchEditorBuildProgress(job.getPNo()));
+            } else if (progresses.containsKey(jobId)) {
+                job.setProgress(progresses.get(jobId).snapshot());
+            }
         }
         return job;
     }

@@ -18,8 +18,8 @@ public class ProjectAccess {
 
     private final JdbcTemplate jdbcTemplate;
 
-    /** 로그인한 회원의 프로젝트가 아니면 404(없음) / 403(남의 것)을 던진다. */
-    public void check(Integer pNo) {
+    /** 로그인한 회원의 프로젝트가 아니면 404(없음) / 403(남의 것)을 던진다. 통과하면 소유자 회원번호를 돌려준다. */
+    public String check(Integer pNo) {
         if (pNo == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "프로젝트 번호가 없습니다.");
         }
@@ -33,5 +33,6 @@ public class ProjectAccess {
         if (!owner.equals(CurrentMember.no()) && !CurrentMember.isAdmin()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "다른 회원의 프로젝트입니다.");
         }
+        return owner;
     }
 }
