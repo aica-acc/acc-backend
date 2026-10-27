@@ -361,6 +361,8 @@ public class ProjectServiceImpl implements ProjectService {
             MultiValueMap<String, Object> formData = new LinkedMultiValueMap<>();
             formData.add("keyword", keyword);
             formData.add("host", host);
+            // 주최가 비어 있으면('정보 없음') AI 가 장소로 지역(시·군)을 추정한다
+            formData.add("location", meta.getLocation() == null ? "" : meta.getLocation());
             formData.add("title", title);
             formData.add("festivalStartDate", festivalStartDate);
 
