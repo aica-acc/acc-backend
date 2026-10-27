@@ -57,7 +57,8 @@ public class WebConfig implements WebMvcConfigurer {
             "/api/auth/signup",
             "/api/auth/login",
             "/api/auth/test-login",
-            "/poster-images/**"
+            "/poster-images/**",
+            "/static/**"   // AI 서버 정적 파일 중계 (AiStaticProxyController)
     };
 
     @Bean

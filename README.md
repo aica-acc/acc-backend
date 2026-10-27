@@ -1,17 +1,18 @@
 # acc-backend
 
 ACC(축제 홍보물 자동생성 서비스)의 **Spring Boot 백엔드**입니다.
-프론트(`acc-front`)와 AI 서버(`acc-ai`), MySQL 사이를 잇는 허브 역할을 합니다.
+모든 데이터가 오가는 **중심**입니다. 프론트(`acc-front`)는 백엔드만 호출하고, AI 서버(`acc-ai`)와 MySQL 은 백엔드만 접근합니다.
 
 ```
-브라우저 ──▶ acc-front(nginx) ──/api/──▶ acc-backend ──▶ MySQL
-                         └──/ai/, /static/──▶ acc-ai (FastAPI)  ◀── acc-backend 가 호출
+브라우저 ──▶ acc-front(nginx) ──/api/, /static/──▶ acc-backend ──▶ MySQL
+                                                       └──────▶ acc-ai (FastAPI, 외부 비노출)
 ```
 
 - 인증(JWT)·회원·권한 관리
 - 프로젝트 / 기획서 / 홍보물 메타데이터를 DB 에 저장하고 조회
 - AI 서버 호출 (기획서 분석, 트렌드 분석, 프롬프트·이미지 생성, 리포트 등)
 - AI 가 만든 파일을 프론트가 볼 수 있는 위치로 복사·관리
+- AI 서버 정적 파일(`/static/**`) 중계 (`AiStaticProxyController`) — 브라우저가 AI 서버에 직접 붙지 않도록
 - DB 스키마 마이그레이션 (Flyway)
 
 ## 기술 스택
@@ -61,7 +62,7 @@ java -jar target/acc-0.0.1-SNAPSHOT.jar
 |---|---|---|
 | `server.port` | 서버 포트 | `8081` |
 | `spring.datasource.url` / `username` / `password` | MySQL 접속 정보 | `jdbc:mysql://localhost:3306/acc_database?...` |
-| `python.api.url` | AI 서버 주소 | `http://localhost:5000` |
+| `python.api.url` | AI 서버 주소 (API 호출과 `/static/**` 중계에 사용) | `http://localhost:5000` |
 | `accai.base-url` | 배너 트렌드용 AI 서버 주소 | `http://localhost:5000` |
 | `react.base-path` | 프론트 레포 루트. 하위 `public/data/promotion/...` 에 결과물을 복사 | `../acc-front` |
 | `python.base-dir` | AI 서버가 홍보물을 생성하는 폴더 | `../acc-ai/promotion` |
@@ -84,7 +85,7 @@ java -jar target/acc-0.0.1-SNAPSHOT.jar
 - 로그인하면 JWT 를 발급하고, 클라이언트는 `Authorization: Bearer <token>` 으로 보냅니다.
 - 토큰이 유효해도 **매 요청마다 DB 에서 회원 상태·권한을 다시 확인**합니다. 관리자가 권한을 바꾸거나 계정을 정지하면 즉시 적용됩니다.
 - 필터가 로그인한 회원번호를 `request.getAttribute("m_no")` 에 넣습니다. 서비스 계층에서는 `CurrentMember.no()` 로 읽습니다.
-- 공개 경로: `/api/auth/config`, `/api/auth/signup`, `/api/auth/login`, `/api/auth/test-login`, `/poster-images/**`. 나머지는 모두 로그인이 필요합니다.
+- 공개 경로: `/api/auth/config`, `/api/auth/signup`, `/api/auth/login`, `/api/auth/test-login`, `/poster-images/**`, `/static/**`(이미지를 `<img>` 로 불러오므로). 나머지는 모두 로그인이 필요합니다.
 
 | 권한 | 설명 |
 |---|---|
@@ -141,16 +142,15 @@ docker run -p 8081:8081 \
   -e SPRING_DATASOURCE_USERNAME=acc_admin_id -e SPRING_DATASOURCE_PASSWORD=... \
   -e SPRING_DATASOURCE_DRIVER_CLASS_NAME=com.mysql.cj.jdbc.Driver \
   -e MYBATIS_MAPPER_LOCATIONS='classpath:/mappers/**/*.xml' -e MYBATIS_TYPE_ALIASES_PACKAGE=com.assistant.acc \
-  -e PYTHON_API_URL=http://acc-ai:5000 -e REACT_BASE_PATH=/data/acc-front -e PYTHON_BASE_DIR=/data/acc-ai/promotion \
+  -e PYTHON_API_URL=http://ai:5000 -e ACCAI_BASE_URL=http://ai:5000 \
+  -e REACT_BASE_PATH=/data/acc-front -e PYTHON_BASE_DIR=/data/acc-ai/promotion \
   -e FILES_GENERATED_ROOT=/data/acc/data/promotion/ -e FILES_PATH=/data/acc/data/proposal \
   -e AUTH_JWT_SECRET=... -e AUTH_ADMIN_PASSWORD=... \
   scv3114/acc-backend
 ```
 
 전체 서비스(DB + AI + 백엔드 + 프론트)를 한 번에 띄우는 `docker-compose.yml` 과 환경변수 정리는 배포용 폴더의 README 를 참고하세요.
-
-> **주의**: 현재 코드는 AI 서버를 `http://localhost:5000` 으로 부르는 곳이 일부 남아 있습니다(`accai.base-url` 등).
-> 컨테이너를 분리해 띄울 때는 `python.api.url` 로 바꿀 수 있는 곳은 바뀌지만, 나머지는 AI 컨테이너와 네트워크를 공유(`network_mode: service:ai`)하는 방식으로 우회하고 있습니다.
+AI 서버 주소는 `PYTHON_API_URL`, `ACCAI_BASE_URL` 두 값으로 모두 바꿀 수 있습니다. 컨테이너를 분리해 띄울 때는 둘 다 AI 서비스 주소(예: `http://ai:5000`)로 지정하세요.
 
 ## 폴더 구조
 
