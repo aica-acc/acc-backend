@@ -1,5 +1,6 @@
 package com.assistant.acc.service.report;
 
+import org.springframework.beans.factory.annotation.Value;
 import com.assistant.acc.domain.project.ProposalMetadata;
 import com.assistant.acc.mapper.project.ProposalMetadataMapper;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +28,8 @@ public class ReportServiceImpl implements ReportService {
     private final ImageService imageService;
 
     // AI 서버 기본 주소
-    private static final String AI_BASE_URL = "http://localhost:5000/report";
+    @Value("${python.api.url:http://localhost:5000}")
+    private String pythonApiUrl;
 
     @Override
     public String generateArticle(Integer projectNo) {
@@ -112,7 +114,7 @@ public class ReportServiceImpl implements ReportService {
         requestBody.put("metadata", metadataMap);
 
         try {
-            String url = AI_BASE_URL + endpoint;
+            String url = pythonApiUrl + "/report" + endpoint;
             log.info("📤 AI 요청 전송: {} (type={})", url, aiReportType);
 
             HttpHeaders headers = new HttpHeaders();

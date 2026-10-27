@@ -1,5 +1,6 @@
 package com.assistant.acc.utility;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
@@ -16,7 +17,9 @@ public class FileSave {
     @Autowired
     private ProposalMapper proposalMapper;
 
-    private static final String BASE_PATH = "C:\\final_project\\ACC\\data\\proposal";
+    // 기획서 업로드 저장 경로 (application.properties 의 files.path / 환경변수 FILES_PATH)
+    @Value("${files.path:./data/proposal}")
+    private String basePath;
 
     /**
      * 파일을 저장하고 DB에 메타데이터를 기록
@@ -37,7 +40,7 @@ public class FileSave {
         String newFileName = timestamp + "_" + originalName;
 
         // 4️⃣ 디렉토리 생성
-        File dir = new File(BASE_PATH);
+        File dir = new File(basePath);
         if (!dir.exists()) dir.mkdirs();
 
         // 5️⃣ 파일 저장

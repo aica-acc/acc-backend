@@ -1,5 +1,6 @@
 package com.assistant.acc.service.poster;
 
+import org.springframework.beans.factory.annotation.Value;
 import com.assistant.acc.domain.project.Project;
 import com.assistant.acc.domain.project.ProposalMetadata;
 import com.assistant.acc.dto.create.prompt.PosterPromptApiRequest;
@@ -35,7 +36,8 @@ public class PosterServiceImpl implements PosterService {
     private final PosterArchiveMapper posterArchiveMapper;
 
     // 파이썬 서버 주소 (포트 번호 확인! 아까 5000 혹은 5001로 하셨죠?)
-    private static final String PYTHON_API_URL = "http://localhost:5000";
+    @Value("${python.api.url:http://localhost:5000}")
+    private String pythonApiUrl;
 
     // 생성자 주입 (Mapper 포함)
     public PosterServiceImpl(RestTemplate restTemplate, ObjectMapper objectMapper, ProjectService projectService, PosterArchiveMapper posterArchiveMapper) {
@@ -123,7 +125,7 @@ public class PosterServiceImpl implements PosterService {
         // 4. 파이썬 호출 (아까 만든 /test/gemini-capability 경로 사용)
         // 나중에 실제 경로명으로 바꾸세요 (예: /api/edit-poster-ai)
         ResponseEntity<String> response = restTemplate.postForEntity(
-                PYTHON_API_URL + "/create-image",
+                pythonApiUrl + "/create-image",
                 request,
                 String.class
         );
@@ -167,7 +169,7 @@ public class PosterServiceImpl implements PosterService {
 
         // 3. Python 호출 (응답도 DTO 클래스를 지정하면 알아서 파싱해줍니다)
         ResponseEntity<PosterPromptResponse> response = restTemplate.postForEntity(
-                PYTHON_API_URL + "/generate-prompt",
+                pythonApiUrl + "/generate-prompt",
                 requestEntity,
                 PosterPromptResponse.class
         );

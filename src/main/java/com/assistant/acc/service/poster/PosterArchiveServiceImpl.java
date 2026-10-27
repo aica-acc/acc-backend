@@ -1,5 +1,6 @@
 package com.assistant.acc.service.poster;
 
+import org.springframework.beans.factory.annotation.Value;
 import com.assistant.acc.dto.poster.PosterArchiveDTO;
 import com.assistant.acc.mapper.poster.PosterArchiveMapper;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +17,9 @@ public class PosterArchiveServiceImpl implements PosterArchiveService {
 
     private final PosterArchiveMapper posterArchiveMapper;
 
-    private final String OLD_BASE_PATH = "C:\\workspace\\uv_festival\\홍보물";
+    // DB 에 남아있는 과거 절대경로 접두어 (웹 경로로 치환할 때만 사용)
+    @Value("${poster.archive.old-base-path:C:\\workspace\\uv_festival\\홍보물}")
+    private String OLD_BASE_PATH;
     private final String NEW_WEB_PATH = "/poster-images/";
 
     // 데이터 조회

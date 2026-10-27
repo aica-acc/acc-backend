@@ -1,5 +1,6 @@
 package com.assistant.acc.service.editor;
 
+import org.springframework.beans.factory.annotation.Value;
 import com.assistant.acc.dto.editor.EditorBuildResponse;
 import com.assistant.acc.dto.editor.PythonBuildResponse;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -18,7 +19,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class EditorBuildServiceImpl implements EditorBuildService {
 
-    private static final String PYTHON_EDITOR_BUILD_URL = "http://127.0.0.1:5000/editor/build";
+    @Value("${python.api.url:http://localhost:5000}")
+    private String pythonApiUrl;
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
@@ -42,7 +44,7 @@ public class EditorBuildServiceImpl implements EditorBuildService {
 
             // 3) Python 호출
             PythonBuildResponse pyResp = restTemplate.postForObject(
-                    PYTHON_EDITOR_BUILD_URL,
+                    pythonApiUrl + "/editor/build",
                     payload,
                     PythonBuildResponse.class
             );

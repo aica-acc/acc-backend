@@ -3,6 +3,7 @@ package com.assistant.acc.controller.project;
 import com.assistant.acc.domain.project.ProposalMetadata;
 import com.assistant.acc.dto.project.RegionTrendResponseDTO;
 import com.assistant.acc.service.poster.PosterService;
+import com.assistant.acc.service.project.ProjectDeleteService;
 import com.assistant.acc.service.project.ProjectService;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,11 +23,21 @@ import org.springframework.web.multipart.MultipartFile;
 public class ProjectController {
 
     private final ProjectService projectService;
+    private final ProjectDeleteService projectDeleteService;
     // 생성자 주입 방식 (권장)
 
     @Autowired
-    public ProjectController(PosterService posterService, ProjectService projectService) {
+    public ProjectController(PosterService posterService, ProjectService projectService,
+            ProjectDeleteService projectDeleteService) {
         this.projectService = projectService;
+        this.projectDeleteService = projectDeleteService;
+    }
+
+    /** 프로젝트 삭제 (본인 프로젝트만). DB 기록과 생성 파일 폴더를 함께 지운다 */
+    @DeleteMapping("/{pNo}")
+    public ResponseEntity<Void> deleteProject(@PathVariable int pNo) {
+        projectDeleteService.deleteProject(pNo);
+        return ResponseEntity.noContent().build();
     }
 
     // POST 요청으로 파일 + 문자열 데이터 받기
