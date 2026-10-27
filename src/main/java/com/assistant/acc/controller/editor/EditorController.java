@@ -10,10 +10,15 @@ import com.assistant.acc.service.editor.EditorAiRenderService;
 import com.assistant.acc.service.editor.EditorBuildService;
 import com.assistant.acc.service.editor.EditorImageSaveService;
 import com.assistant.acc.service.editor.EditorTemplateService;
+import com.assistant.acc.security.CurrentMember;
 import com.assistant.acc.security.ProjectAccess;
+import com.assistant.acc.service.job.GenerationJobService;
+import com.assistant.acc.service.job.GenerationJobService.Job;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -31,6 +36,48 @@ public class EditorController {
     private final EditorAiRenderService editorAiRenderService;
     private final EditorImageSaveService editorImageSaveService;
     private final ProjectAccess projectAccess;
+    private final GenerationJobService jobService;
+    private final RestTemplate restTemplate;
+
+    @Value("${python.api.url:http://localhost:5000}")
+    private String pythonApiUrl;
+
+    // ==============================
+    // 0) 파생물 생성(템플릿 빌드)을 백그라운드 작업으로 시작
+    // ==============================
+    /**
+     * POST /api/editor/build-jobs?pNo=40  (body: postersPayload JSON 문자열, /build 와 같음)
+     * 바로 작업 번호를 돌려준다. 진행 상황은 GET /api/jobs/{jobId}.
+     * 같은 프로젝트의 빌드가 이미 돌고 있으면 그 작업을 돌려준다.
+     */
+    @PostMapping("/build-jobs")
+    public Job startBuildJob(@RequestParam("pNo") Integer pNo, @RequestBody String postersJson) {
+        projectAccess.check(pNo);
+        return jobService.start(pNo, CurrentMember.no(), GenerationJobService.EDITOR_BUILD,
+                () -> editorBuildService.buildAndSaveTemplates(pNo, postersJson));
+    }
+
+    /** 이 프로젝트의 최근 빌드 작업 (진행 화면을 다시 열었을 때 이어서 보기). 없으면 204 */
+    @GetMapping("/build-jobs/latest")
+    public ResponseEntity<Job> latestBuildJob(@RequestParam("pNo") Integer pNo) {
+        projectAccess.check(pNo);
+        Job job = jobService.latestFor(pNo, GenerationJobService.EDITOR_BUILD);
+        return job == null ? ResponseEntity.noContent().build() : ResponseEntity.ok(job);
+    }
+
+    /** 이미 만든 파생물과 그때의 베이스 (같은 베이스면 다시 만들 때 재사용). {유형: 베이스 경로} */
+    @SuppressWarnings("unchecked")
+    @GetMapping("/project/{pNo}/derivatives")
+    public Map<String, Object> derivatives(@PathVariable Integer pNo) {
+        projectAccess.check(pNo);
+        try {
+            Map<String, Object> m = restTemplate.getForObject(pythonApiUrl + "/editor/derivatives/" + pNo, Map.class);
+            return m == null ? Map.of() : m;
+        } catch (Exception e) {
+            log.warn("파생물 목록 조회 실패 pNo={} ({})", pNo, e.getMessage());
+            return Map.of();
+        }
+    }
 
     // ==============================
     // 1) 템플릿 빌드
