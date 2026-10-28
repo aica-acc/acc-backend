@@ -44,6 +44,7 @@ public class EditorController {
     private final RestTemplate restTemplate;
     private final CreditService creditService;
     private final ObjectMapper objectMapper;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     @Value("${python.api.url:http://localhost:5000}")
     private String pythonApiUrl;
@@ -100,6 +101,43 @@ public class EditorController {
             }
         }
         return creditService.charge(CurrentMember.no(), CurrentMember.role(), cost, "파생물 생성", pNo);
+    }
+
+    /**
+     * 데모용 고정 베이스: 이 프로젝트의 파생물을 만들 때 가장 많이 쓴 포스터·마스코트와 만들어 둔 파생물 종류.
+     * 데모 화면은 이 베이스를 미리 선택해 두고 바꾸지 못하게 한다. {poster:{filePathNo,promptNo}, mascot:{...}, types:[...]}
+     */
+    @GetMapping("/project/{pNo}/demo-base")
+    public Map<String, Object> demoBase(@PathVariable Integer pNo) {
+        projectAccess.check(pNo);
+        Map<String, Object> made = derivatives(pNo);
+        Map<String, Object> res = new HashMap<>();
+        res.put("types", new java.util.ArrayList<>(made.keySet()));
+        res.put("poster", demoBaseAsset(pNo, "poster", made));
+        res.put("mascot", demoBaseAsset(pNo, "mascot", made));
+        return res;
+    }
+
+    private Map<String, Object> demoBaseAsset(int pNo, String type, Map<String, Object> made) {
+        // 가장 많이 쓰인 베이스 (…/{type}/파일)
+        String base = made.values().stream()
+                .map(EditorController::promotionKey)
+                .filter(k -> k != null && k.contains("/" + type + "/"))
+                .collect(java.util.stream.Collectors.groupingBy(k -> k, java.util.stream.Collectors.counting()))
+                .entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
+                .orElse(null);
+        String sql = "SELECT gfp.generate_file_path_no AS filePathNo, ga.prompt_no AS promptNo "
+                + "FROM generate_file_path gfp JOIN generated_asset ga ON gfp.generated_asset_no = ga.generated_asset_no "
+                + "JOIN promotion pr ON ga.promotion_no = pr.promotion_no "
+                + "WHERE pr.p_no = ? AND ga.generate_asset_type = ? "
+                + (base != null ? "AND gfp.file_path LIKE ? " : "")
+                + "ORDER BY ga.generated_asset_no LIMIT 1";
+        List<Map<String, Object>> rows = base != null
+                ? jdbc.queryForList(sql, pNo, type, "%" + base)
+                : jdbc.queryForList(sql, pNo, type);
+        return rows.isEmpty() ? null : rows.get(0);
     }
 
     /** 경로·URL 에서 "data/promotion/" 이후 부분 (웹 경로와 절대경로를 같은 값으로 비교) */
