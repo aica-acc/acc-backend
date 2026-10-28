@@ -15,6 +15,7 @@ public class Member {
     private String phone;
     private String passwordHash; // BCrypt
     private String role;         // USER / TEST / ADMIN
+    private int credit;          // 남은 크레딧 (CreditService 로만 바꾼다)
     private String state;        // ACTIVE / SUSPENDED / DELETED
     private LocalDate createAt;
     private LocalDate deleteAt;

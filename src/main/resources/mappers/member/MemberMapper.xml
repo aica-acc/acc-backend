@@ -9,13 +9,14 @@
         <result property="phone"        column="m_phone"/>
         <result property="passwordHash" column="password_hash"/>
         <result property="role"         column="role"/>
+        <result property="credit"       column="credit"/>
         <result property="state"        column="state"/>
         <result property="createAt"     column="create_at"/>
         <result property="deleteAt"     column="delete_at"/>
     </resultMap>
 
     <sql id="memberColumns">
-        m_no, m_email, m_name, m_phone, password_hash, role, state, create_at, delete_at
+        m_no, m_email, m_name, m_phone, password_hash, role, credit, state, create_at, delete_at
     </sql>
 
     <select id="findByEmail" resultMap="MemberResultMap">
@@ -34,6 +35,15 @@
         INSERT INTO member (m_no, m_email, m_name, m_phone, password_hash, role, state, create_at)
         VALUES (#{mNo}, #{email}, #{name}, #{phone}, #{passwordHash}, #{role}, #{state}, CURDATE())
     </insert>
+
+    <select id="findBySocial" resultMap="MemberResultMap">
+        SELECT <include refid="memberColumns"/> FROM member
+        WHERE social_provider = #{provider} AND social_id = #{socialId}
+    </select>
+
+    <update id="linkSocial">
+        UPDATE member SET social_provider = #{provider}, social_id = #{socialId} WHERE m_no = #{mNo}
+    </update>
 
     <select id="findAll" resultMap="MemberResultMap">
         SELECT <include refid="memberColumns"/> FROM member ORDER BY m_no

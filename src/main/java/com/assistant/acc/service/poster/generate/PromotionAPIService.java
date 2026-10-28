@@ -16,4 +16,7 @@ public interface PromotionAPIService {
     List<Prompt> generatePrompts(String memberNo, Integer pNo, Map<String, Object> trendData, String promotionType);
 
     CreateImageResultResponse createPosterImages(String memberNo, Integer pNo, Map<String, Object> trendData, String promotionType);
+
+    /** 이 프로젝트에 이미 만든 이미지(DB 기록 + 파일)가 있는지. 있으면 생성 작업이 AI 를 부르지 않는다 */
+    boolean hasImages(String memberNo, Integer pNo, String promotionType);
 }

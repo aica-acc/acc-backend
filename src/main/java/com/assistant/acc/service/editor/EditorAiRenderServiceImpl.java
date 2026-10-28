@@ -105,13 +105,13 @@ public class EditorAiRenderServiceImpl implements EditorAiRenderService {
             log.error("❌ [EditorAiRenderService] AI 서버 연결 실패 (타임아웃 또는 네트워크 오류)", e);
             EditorAiRenderResponse error = new EditorAiRenderResponse();
             error.setStatus("error");
-            error.setMessage("AI 서버 연결 실패: " + e.getMessage());
+            error.setMessage("AI 서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.");
             return error;
         } catch (Exception e) {
             log.error("❌ [EditorAiRenderService] renderWithAi error", e);
             EditorAiRenderResponse error = new EditorAiRenderResponse();
             error.setStatus("error");
-            error.setMessage("AI render failed: " + e.getMessage());
+            error.setMessage("AI 색상 추천에 실패했습니다. 잠시 후 다시 시도해 주세요.");
             return error;
         }
     }

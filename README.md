@@ -72,7 +72,7 @@ java -jar target/acc-0.0.1-SNAPSHOT.jar
 | `cors.allowed-origin-patterns` | CORS 허용 Origin (쉼표 구분) | `http://localhost:*,http://127.0.0.1:*` |
 | `auth.jwt.secret` | JWT 서명 키 (32바이트 이상). 비우면 기동마다 랜덤 키 → 재시작 시 로그인 풀림 | |
 | `auth.jwt.expire-hours` | 토큰 유효 시간 | `12` |
-| `auth.test-login.enabled` | "test 계정으로 로그인" 허용 여부. **외부 공개 서버는 `false` 권장** | `true` |
+| `auth.test-login.enabled` | "test 계정으로 로그인" 허용 여부. 로컬 개발·시연할 때만 `true` | `false` |
 | `auth.test.email` | test 계정 이메일 | `test@acc.local` |
 | `auth.admin.email` / `auth.admin.password` | 관리자 계정. 비밀번호(8자 이상)를 주면 최초 기동 시 생성 | `admin@acc.local` / (없음) |
 | `test.samples-dir` | test 계정 자동 입력에 쓰는 샘플 기획서 폴더 (`samples.json` + 파일) | `./data/samples/proposals` |
@@ -85,7 +85,7 @@ java -jar target/acc-0.0.1-SNAPSHOT.jar
 - 로그인하면 JWT 를 발급하고, 클라이언트는 `Authorization: Bearer <token>` 으로 보냅니다.
 - 토큰이 유효해도 **매 요청마다 DB 에서 회원 상태·권한을 다시 확인**합니다. 관리자가 권한을 바꾸거나 계정을 정지하면 즉시 적용됩니다.
 - 필터가 로그인한 회원번호를 `request.getAttribute("m_no")` 에 넣습니다. 서비스 계층에서는 `CurrentMember.no()` 로 읽습니다.
-- 공개 경로: `/api/auth/config`, `/api/auth/signup`, `/api/auth/login`, `/api/auth/test-login`, `/poster-images/**`, `/static/**`(이미지를 `<img>` 로 불러오므로). 나머지는 모두 로그인이 필요합니다.
+- 공개 경로: `/api/auth/config`, `/api/auth/signup`, `/api/auth/login`, `/api/auth/test-login`, `/files/**`(이미지를 `<img>` 로 불러오므로. 주소는 서버가 암호화한 토큰이라 추측할 수 없음). 나머지는 모두 로그인이 필요합니다. 예전 `/static/**`, `/poster-images/**` 는 404 입니다.
 
 | 권한 | 설명 |
 |---|---|

@@ -12,6 +12,10 @@ import com.assistant.acc.service.editor.EditorImageSaveService;
 import com.assistant.acc.service.editor.EditorTemplateService;
 import com.assistant.acc.security.CurrentMember;
 import com.assistant.acc.security.ProjectAccess;
+import com.assistant.acc.service.credit.CreditService;
+import com.assistant.acc.service.credit.CreditService.Charge;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.assistant.acc.service.job.GenerationJobService;
 import com.assistant.acc.service.job.GenerationJobService.Job;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +42,9 @@ public class EditorController {
     private final ProjectAccess projectAccess;
     private final GenerationJobService jobService;
     private final RestTemplate restTemplate;
+    private final CreditService creditService;
+    private final ObjectMapper objectMapper;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     @Value("${python.api.url:http://localhost:5000}")
     private String pythonApiUrl;
@@ -53,8 +60,94 @@ public class EditorController {
     @PostMapping("/build-jobs")
     public Job startBuildJob(@RequestParam("pNo") Integer pNo, @RequestBody String postersJson) {
         projectAccess.check(pNo);
+        Job running = jobService.active(pNo, GenerationJobService.EDITOR_BUILD);
+        if (running != null) {
+            return running;
+        }
+        boolean demo = CurrentMember.isTest();
+        Charge charge = demo ? null : chargeBuild(pNo, postersJson);
         return jobService.start(pNo, CurrentMember.no(), GenerationJobService.EDITOR_BUILD,
-                () -> editorBuildService.buildAndSaveTemplates(pNo, postersJson));
+                progress -> editorBuildService.buildAndSaveTemplates(pNo, postersJson, demo),
+                charge == null ? null : charge::refund);
+    }
+
+    /**
+     * 파생물 크레딧 차감. 같은 베이스로 이미 만든 종류는 AI 가 재사용(derivative_cache)하므로 새로 만들 종류만 센다.
+     * 데모(test) 계정은 차감하지 않고 AI 가 미리 만든 결과만 쓴다 (demo=true)
+     */
+    private Charge chargeBuild(int pNo, String postersJson) {
+        List<Map<String, Object>> posters;
+        try {
+            posters = objectMapper.readValue(postersJson, new TypeReference<List<Map<String, Object>>>() {});
+        } catch (Exception e) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "파생물 요청 형식이 올바르지 않습니다.");
+        }
+        Map<String, Object> made = derivatives(pNo);
+        int cost = 0;
+        for (Map<String, Object> poster : posters) {
+            String posterBase = promotionKey(poster.get("posterImageUrl"));
+            String mascotBase = promotionKey(poster.get("mascotImageUrl"));
+            Object types = poster.get("types");
+            if (!(types instanceof List<?> list)) {
+                continue;
+            }
+            for (Object t : list) {
+                String madeBase = promotionKey(made.get(String.valueOf(t)));
+                if (madeBase != null && (madeBase.equals(posterBase) || madeBase.equals(mascotBase))) {
+                    continue; // 같은 베이스로 이미 만든 결과 재사용
+                }
+                cost += creditService.derivativeCost(String.valueOf(t));
+            }
+        }
+        return creditService.charge(CurrentMember.no(), CurrentMember.role(), cost, "파생물 생성", pNo);
+    }
+
+    /**
+     * 데모용 고정 베이스: 이 프로젝트의 파생물을 만들 때 가장 많이 쓴 포스터·마스코트와 만들어 둔 파생물 종류.
+     * 데모 화면은 이 베이스를 미리 선택해 두고 바꾸지 못하게 한다. {poster:{filePathNo,promptNo}, mascot:{...}, types:[...]}
+     */
+    @GetMapping("/project/{pNo}/demo-base")
+    public Map<String, Object> demoBase(@PathVariable Integer pNo) {
+        projectAccess.check(pNo);
+        Map<String, Object> made = derivatives(pNo);
+        Map<String, Object> res = new HashMap<>();
+        res.put("types", new java.util.ArrayList<>(made.keySet()));
+        res.put("poster", demoBaseAsset(pNo, "poster", made));
+        res.put("mascot", demoBaseAsset(pNo, "mascot", made));
+        return res;
+    }
+
+    private Map<String, Object> demoBaseAsset(int pNo, String type, Map<String, Object> made) {
+        // 가장 많이 쓰인 베이스 (…/{type}/파일)
+        String base = made.values().stream()
+                .map(EditorController::promotionKey)
+                .filter(k -> k != null && k.contains("/" + type + "/"))
+                .collect(java.util.stream.Collectors.groupingBy(k -> k, java.util.stream.Collectors.counting()))
+                .entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
+                .orElse(null);
+        String sql = "SELECT gfp.generate_file_path_no AS filePathNo, ga.prompt_no AS promptNo "
+                + "FROM generate_file_path gfp JOIN generated_asset ga ON gfp.generated_asset_no = ga.generated_asset_no "
+                + "JOIN promotion pr ON ga.promotion_no = pr.promotion_no "
+                + "WHERE pr.p_no = ? AND ga.generate_asset_type = ? "
+                + (base != null ? "AND gfp.file_path LIKE ? " : "")
+                + "ORDER BY ga.generated_asset_no LIMIT 1";
+        List<Map<String, Object>> rows = base != null
+                ? jdbc.queryForList(sql, pNo, type, "%" + base)
+                : jdbc.queryForList(sql, pNo, type);
+        return rows.isEmpty() ? null : rows.get(0);
+    }
+
+    /** 경로·URL 에서 "data/promotion/" 이후 부분 (웹 경로와 절대경로를 같은 값으로 비교) */
+    private static String promotionKey(Object path) {
+        if (path == null) {
+            return null;
+        }
+        String s = path.toString().replace('\\', '/');
+        int i = s.indexOf("data/promotion/");
+        return i < 0 ? s : s.substring(i + "data/promotion/".length());
     }
 
     /** 이 프로젝트의 최근 빌드 작업 (진행 화면을 다시 열었을 때 이어서 보기). 없으면 204 */
@@ -72,7 +165,13 @@ public class EditorController {
         projectAccess.check(pNo);
         try {
             Map<String, Object> m = restTemplate.getForObject(pythonApiUrl + "/editor/derivatives/" + pNo, Map.class);
-            return m == null ? Map.of() : m;
+            if (m == null) {
+                return Map.of();
+            }
+            // AI 는 "…/data/promotion/ 이후" 경로를 준다. 웹 경로로 맞춰야 응답에서 화면의 파일 주소(/files/토큰)와 같은 값이 된다
+            Map<String, Object> out = new HashMap<>();
+            m.forEach((type, base) -> out.put((String) type, "/data/promotion/" + base));
+            return out;
         } catch (Exception e) {
             log.warn("파생물 목록 조회 실패 pNo={} ({})", pNo, e.getMessage());
             return Map.of();
@@ -116,8 +215,17 @@ public class EditorController {
                 pNo, postersJson != null ? postersJson.length() : 0);
 
         projectAccess.check(pNo);
-        EditorBuildResponse response = editorBuildService.buildAndSaveTemplates(pNo, postersJson);
-        return ResponseEntity.ok(response);
+        boolean demo = CurrentMember.isTest();
+        Charge charge = demo ? null : chargeBuild(pNo, postersJson);
+        try {
+            EditorBuildResponse response = editorBuildService.buildAndSaveTemplates(pNo, postersJson, demo);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            if (charge != null) {
+                charge.refund();
+            }
+            throw e;
+        }
         }
     // ==============================
     // 2) 템플릿 목록 조회
@@ -178,8 +286,16 @@ public class EditorController {
         log.info("🎨 [EditorController] /ai-render layoutType={}",
                 request.getLayoutType());
 
-        EditorAiRenderResponse res = editorAiRenderService.renderWithAi(request);
-        return ResponseEntity.ok(res);
+        // 데모 계정은 DemoGuardInterceptor 가 막는다
+        Charge charge = creditService.charge(CurrentMember.no(), CurrentMember.role(),
+                creditService.cost("ai-render"), "AI 색상 추천", null);
+        try {
+            EditorAiRenderResponse res = editorAiRenderService.renderWithAi(request);
+            return ResponseEntity.ok(res);
+        } catch (RuntimeException e) {
+            charge.refund();
+            throw e;
+        }
     }
 
     // ==============================

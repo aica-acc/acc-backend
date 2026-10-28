@@ -2,6 +2,9 @@ package com.assistant.acc.controller.project;
 
 import com.assistant.acc.domain.project.ProposalMetadata;
 import com.assistant.acc.dto.project.RegionTrendResponseDTO;
+import com.assistant.acc.security.CurrentMember;
+import com.assistant.acc.service.credit.CreditService;
+import com.assistant.acc.service.credit.CreditService.Charge;
 import com.assistant.acc.service.poster.PosterService;
 import com.assistant.acc.service.project.ProjectDeleteService;
 import com.assistant.acc.service.project.ProjectService;
@@ -24,13 +27,20 @@ public class ProjectController {
 
     private final ProjectService projectService;
     private final ProjectDeleteService projectDeleteService;
+    private final CreditService creditService;
     // 생성자 주입 방식 (권장)
 
     @Autowired
     public ProjectController(PosterService posterService, ProjectService projectService,
-            ProjectDeleteService projectDeleteService) {
+            ProjectDeleteService projectDeleteService, CreditService creditService) {
         this.projectService = projectService;
         this.projectDeleteService = projectDeleteService;
+        this.creditService = creditService;
+    }
+
+    /** 유료 분석 차감 (관리자는 0). 데모 계정은 DemoGuardInterceptor 가 먼저 막는다 */
+    private Charge charge(String costKey, String what) {
+        return creditService.charge(CurrentMember.no(), CurrentMember.role(), creditService.cost(costKey), what, null);
     }
 
     /** 프로젝트 삭제 (본인 프로젝트만). DB 기록과 생성 파일 폴더를 함께 지운다 */
@@ -56,6 +66,8 @@ public class ProjectController {
         System.out.println("  제목: " + title);
         System.out.println("========================================");
 
+        // 크레딧이 모자라면 402 (여기서 막아 아래 catch 의 500 으로 바뀌지 않게 한다)
+        Charge charge = charge("analyze-proposal", "기획서 분석");
         try {
             System.out.println("[Controller] Service 호출 시작...");
             ProposalMetadata metadata = projectService.analyzeProposal(file, theme, keywords, title);
@@ -69,6 +81,7 @@ public class ProjectController {
             System.err.println("  에러 메시지: " + e.getMessage());
             System.err.println("========================================");
             e.printStackTrace();
+            charge.refund();
             return ResponseEntity.status(500).build();
         }
     }
@@ -85,8 +98,18 @@ public class ProjectController {
             @RequestParam("festival_start_date") String festivalStartDate) throws IOException {
         log.info("📌 요청 수신: keyword={}, title={}", keyword, title);
 
-        var result = projectService.analyzeTotalTrend(keyword, title, festivalStartDate);
-        return ResponseEntity.ok(result);
+        Charge charge = charge("trend", "트렌드 분석");
+        try {
+            var result = projectService.analyzeTotalTrend(keyword, title, festivalStartDate);
+            // 서비스는 실패하면 예외 대신 {error: ...} 를 돌려준다
+            if (result != null && result.containsKey("error")) {
+                charge.refund();
+            }
+            return ResponseEntity.ok(result);
+        } catch (RuntimeException | IOException e) {
+            charge.refund();
+            throw e;
+        }
     }
 
     @PostMapping("/analyze/region_trend")
@@ -100,9 +123,14 @@ public class ProjectController {
             m_no = "M000001";
 
         log.info("📌 [Controller] 지역 트렌드 요청: 회원={}, 날짜={}", m_no, festivalStartDate);
-        RegionTrendResponseDTO result = projectService.analyzeRegionTrend(m_no, festivalStartDate);
-
-        return ResponseEntity.ok(result);
+        Charge charge = charge("trend", "지역 트렌드 분석");
+        try {
+            RegionTrendResponseDTO result = projectService.analyzeRegionTrend(m_no, festivalStartDate);
+            return ResponseEntity.ok(result);
+        } catch (RuntimeException e) {
+            charge.refund();
+            throw e;
+        }
     }
 
 }
