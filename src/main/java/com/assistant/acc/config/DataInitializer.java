@@ -28,7 +28,7 @@ public class DataInitializer implements ApplicationRunner {
     @Value("${auth.test.email:test@acc.local}")
     private String testEmail;
 
-    @Value("${auth.test.name:테스트 계정}")
+    @Value("${auth.test.name:게스트}")
     private String testName;
 
     @Value("${auth.admin.email:admin@acc.local}")
