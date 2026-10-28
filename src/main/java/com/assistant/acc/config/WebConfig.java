@@ -44,6 +44,7 @@ public class WebConfig implements WebMvcConfigurer {
             "/api/auth/signup",
             "/api/auth/login",
             "/api/auth/test-login",
+            "/api/auth/oauth/**",
             "/files/**"   // 브라우저용 파일 주소 (<img src> 라 토큰 없이. 주소 자체가 추측 불가)
     };
 

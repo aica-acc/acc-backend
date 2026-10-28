@@ -15,6 +15,8 @@ import com.assistant.acc.dto.auth.AuthDtos.LoginRequest;
 import com.assistant.acc.dto.auth.AuthDtos.SignupRequest;
 import com.assistant.acc.security.CurrentMember;
 import com.assistant.acc.service.auth.AuthService;
+import com.assistant.acc.service.auth.SocialLoginService;
+import org.springframework.web.bind.annotation.PathVariable;
 
 import lombok.RequiredArgsConstructor;
 
@@ -25,11 +27,19 @@ import lombok.RequiredArgsConstructor;
 public class AuthController {
 
     private final AuthService authService;
+    private final SocialLoginService socialLoginService;
 
-    /** 로그인 화면이 test 로그인 버튼을 보여줄지 결정할 때 사용 (인증 불필요) */
+    /** 화면이 체험하기·소셜 로그인 버튼을 보여줄지 결정할 때 사용 (인증 불필요). social: {제공자: 공개 client id} */
     @GetMapping("/config")
     public Map<String, Object> config() {
-        return Map.of("testLoginEnabled", authService.isTestLoginEnabled());
+        return Map.of("testLoginEnabled", authService.isTestLoginEnabled(),
+                "social", socialLoginService.publicClientIds());
+    }
+
+    /** 소셜 로그인: 제공자 로그인 창에서 돌아온 code 로 로그인(처음이면 가입). body: {code, redirectUri} */
+    @PostMapping("/oauth/{provider}")
+    public Map<String, Object> oauth(@PathVariable String provider, @RequestBody Map<String, String> body) {
+        return socialLoginService.login(provider, body.get("code"), body.get("redirectUri"));
     }
 
     @PostMapping("/signup")

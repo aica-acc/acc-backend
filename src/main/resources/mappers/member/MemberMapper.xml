@@ -36,6 +36,15 @@
         VALUES (#{mNo}, #{email}, #{name}, #{phone}, #{passwordHash}, #{role}, #{state}, CURDATE())
     </insert>
 
+    <select id="findBySocial" resultMap="MemberResultMap">
+        SELECT <include refid="memberColumns"/> FROM member
+        WHERE social_provider = #{provider} AND social_id = #{socialId}
+    </select>
+
+    <update id="linkSocial">
+        UPDATE member SET social_provider = #{provider}, social_id = #{socialId} WHERE m_no = #{mNo}
+    </update>
+
     <select id="findAll" resultMap="MemberResultMap">
         SELECT <include refid="memberColumns"/> FROM member ORDER BY m_no
     </select>

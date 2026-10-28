@@ -172,6 +172,11 @@ public class AuthService {
         return String.format("M%06d", n + 1);
     }
 
+    /** 소셜 로그인으로 찾은(또는 만든) 회원의 세션 */
+    public Map<String, Object> socialSession(Member m) {
+        return session(m);
+    }
+
     private Map<String, Object> session(Member m) {
         Map<String, Object> res = new LinkedHashMap<>();
         res.put("token", tokens.create(m));
