@@ -31,4 +31,9 @@ public interface MemberMapper {
     int updateProfile(@Param("mNo") String mNo, @Param("name") String name, @Param("phone") String phone);
 
     int updatePassword(@Param("mNo") String mNo, @Param("passwordHash") String passwordHash);
+
+    /** 소셜 로그인으로 연결된 회원 (없으면 null) */
+    Member findBySocial(@Param("provider") String provider, @Param("socialId") String socialId);
+
+    int linkSocial(@Param("mNo") String mNo, @Param("provider") String provider, @Param("socialId") String socialId);
 }

@@ -23,6 +23,16 @@ public final class CurrentMember {
         return "ADMIN".equals(request().getAttribute("role"));
     }
 
+    public static String role() {
+        Object v = request().getAttribute("role");
+        return v == null ? null : v.toString();
+    }
+
+    /** 데모(test) 계정: 유료 생성을 하지 않고 미리 만든 결과만 보여 준다 */
+    public static boolean isTest() {
+        return "TEST".equals(request().getAttribute("role"));
+    }
+
     private static HttpServletRequest request() {
         return ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
     }

@@ -17,6 +17,7 @@ import com.assistant.acc.dto.auth.AuthDtos.LoginRequest;
 import com.assistant.acc.dto.auth.AuthDtos.SignupRequest;
 import com.assistant.acc.mapper.member.MemberMapper;
 import com.assistant.acc.security.JwtTokenProvider;
+import com.assistant.acc.service.credit.CreditService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -29,8 +30,9 @@ public class AuthService {
     private final MemberMapper memberMapper;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider tokens;
+    private final CreditService creditService;
 
-    @Value("${auth.test-login.enabled:true}")
+    @Value("${auth.test-login.enabled:false}")
     private boolean testLoginEnabled;
 
     @Value("${auth.test.email:test@acc.local}")
@@ -56,7 +58,9 @@ public class AuthService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 가입된 이메일입니다.");
         }
         Member m = createMember(email, name, req.getPhone(), req.getPassword(), Member.ROLE_USER, null);
-        return session(m);
+        // 가입 기념 크레딧: 전체 홍보물을 한 번 만들 수 있는 양 (credit.signup-bonus)
+        creditService.grantSignupBonus(m);
+        return session(memberMapper.findByNo(m.getMNo()));
     }
 
     public Map<String, Object> login(LoginRequest req) {
@@ -168,6 +172,11 @@ public class AuthService {
         return String.format("M%06d", n + 1);
     }
 
+    /** 소셜 로그인으로 찾은(또는 만든) 회원의 세션 */
+    public Map<String, Object> socialSession(Member m) {
+        return session(m);
+    }
+
     private Map<String, Object> session(Member m) {
         Map<String, Object> res = new LinkedHashMap<>();
         res.put("token", tokens.create(m));
@@ -175,15 +184,24 @@ public class AuthService {
         return res;
     }
 
+    /** 본인에게 주는 회원 정보. 회원번호는 내부 식별자라 브라우저에 보내지 않는다 */
     public static Map<String, Object> view(Member m) {
         Map<String, Object> v = new LinkedHashMap<>();
-        v.put("mNo", m.getMNo());
         v.put("email", m.getEmail());
         v.put("name", m.getName());
         v.put("phone", m.getPhone());
         v.put("role", m.getRole());
+        v.put("credit", m.getCredit());
         v.put("state", m.getState());
         v.put("createAt", m.getCreateAt() == null ? null : m.getCreateAt().toString());
+        return v;
+    }
+
+    /** 관리자 화면용: 회원을 지정해 권한·상태를 바꿔야 하므로 회원번호를 포함한다 */
+    public static Map<String, Object> adminView(Member m) {
+        Map<String, Object> v = new LinkedHashMap<>();
+        v.put("mNo", m.getMNo());
+        v.putAll(view(m));
         return v;
     }
 }

@@ -298,6 +298,12 @@ public class PromotionAPIServiceImpl implements PromotionAPIService {
     /**
      * 방어 1: DB에 이미 저장된 이미지가 있는지 확인
      */
+    @Override
+    public boolean hasImages(String memberNo, Integer pNo, String promotionType) {
+        return checkIfImagesExistInDB(pNo, promotionType)
+                && fileStorageService.checkFilesExistInReactPublic(memberNo, pNo, promotionType);
+    }
+
     private boolean checkIfImagesExistInDB(Integer projectNo, String promotionType) {
         int count = generatedAssetMapper.countByProjectAndType(projectNo, promotionType);
         return count >= 4;
