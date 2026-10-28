@@ -53,3 +53,20 @@ mybatis.type-aliases-package=com.assistant.acc
 spring.servlet.multipart.enabled=true
 spring.servlet.multipart.max-file-size=50MB
 spring.servlet.multipart.max-request-size=50MB
+
+# --- 크레딧 (1 크레딧 ≈ 원가 10원) ---
+# 가입 기념 크레딧: 홍보물 전체를 한 번 만들 수 있는 양
+credit.signup-bonus=500
+# 기능별 차감량 (기본값은 CreditService.COSTS). 바꿀 때만 주석을 푼다
+# credit.cost.analyze-proposal=2
+# credit.cost.trend=10
+# credit.cost.poster-images=80
+# credit.cost.mascot-images=30
+# credit.cost.regenerate=20
+# credit.cost.derivative-basic=5
+# credit.cost.derivative-banner=10
+# credit.cost.derivative-premium=20
+# credit.cost.derivative-video=60
+# credit.cost.ai-render=3
+# credit.cost.report=1
+# credit.cost.live-poster=50
