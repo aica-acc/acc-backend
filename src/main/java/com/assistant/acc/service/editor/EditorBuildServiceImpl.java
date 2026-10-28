@@ -39,7 +39,7 @@ public class EditorBuildServiceImpl implements EditorBuildService {
     }
 
     @Override
-    public EditorBuildResponse buildAndSaveTemplates(int pNo, String postersJson) {
+    public EditorBuildResponse buildAndSaveTemplates(int pNo, String postersJson, boolean demo) {
         try {
             // 1) postersJson 파싱
             //    화면은 이제 웹 경로(/files 토큰 → /data/promotion/...)만 보낸다. AI 생성기는 예전처럼 절대경로를 받으므로 여기서 바꾼다
@@ -50,6 +50,7 @@ public class EditorBuildServiceImpl implements EditorBuildService {
             Map<String, Object> payload = new HashMap<>();
             payload.put("pNo", pNo);
             payload.put("posters", posters);
+            payload.put("demo", demo);
 
             log.info("🚀 [EditorBuildService] call Python editor.build, pNo={}, posters_count={}",
                     pNo, posters.size());

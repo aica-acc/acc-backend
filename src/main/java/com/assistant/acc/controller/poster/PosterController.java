@@ -4,6 +4,9 @@ import com.assistant.acc.domain.poster.RegenerateResponseDTO;
 import com.assistant.acc.domain.prompt.Prompt;
 import com.assistant.acc.dto.create.poster.CreateImageResultResponse;
 import com.assistant.acc.dto.image.PosterElementDTO;
+import com.assistant.acc.security.CurrentMember;
+import com.assistant.acc.service.credit.CreditService;
+import com.assistant.acc.service.credit.CreditService.Charge;
 import com.assistant.acc.service.poster.generate.PromotionAPIService;
 import com.assistant.acc.service.poster.PosterService;
 import com.assistant.acc.service.poster.regenerate.PosterRegenerateService;
@@ -17,18 +20,19 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api") // 기본 경로
-@CrossOrigin(origins = { "http://localhost:5173", "http://localhost:5175" })
 public class PosterController {
 
     private final PosterService posterService;
     private final PromotionAPIService promotionAPIService;
     private final PosterRegenerateService posterRegenerateService;
+    private final CreditService creditService;
 
     public PosterController(PosterService posterService, PromotionAPIService promotionAPIService,
-            PosterRegenerateService posterRegenerateService) {
+            PosterRegenerateService posterRegenerateService, CreditService creditService) {
         this.posterService = posterService;
         this.promotionAPIService = promotionAPIService;
         this.posterRegenerateService = posterRegenerateService;
+        this.creditService = creditService;
     }
 
     // [기존] 1단계 분석
@@ -96,10 +100,17 @@ public class PosterController {
             m_no = "M000001";
         String visualPrompt = (String) body.get("visual_prompt");
 
-        RegenerateResponseDTO result = posterRegenerateService.regenerated(m_no, filePathNo, visualPrompt,
-                promotionType);
-
-        return ResponseEntity.ok(result);
+        // 데모 계정은 DemoGuardInterceptor 가 막는다
+        Charge charge = creditService.charge(CurrentMember.no(), CurrentMember.role(),
+                creditService.cost("regenerate"), "포스터 다시 만들기", null);
+        try {
+            RegenerateResponseDTO result = posterRegenerateService.regenerated(m_no, filePathNo, visualPrompt,
+                    promotionType);
+            return ResponseEntity.ok(result);
+        } catch (RuntimeException e) {
+            charge.refund();
+            throw e;
+        }
     }
 
 }

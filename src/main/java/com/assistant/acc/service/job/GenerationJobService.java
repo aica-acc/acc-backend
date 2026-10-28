@@ -91,13 +91,24 @@ public class GenerationJobService {
 
     /** 단계별 진행을 기록하는 작업 (progress.step(...) 으로 단계를 등록하고 progress.run(...) 으로 실행) */
     public Job start(int pNo, String mNo, String kind, Function<JobProgress, Object> work) {
+        return start(pNo, mNo, kind, work, null);
+    }
+
+    /** 같은 프로젝트·종류로 진행 중인 작업 (없으면 null). 크레딧은 새 작업을 시작할 때만 차감하므로 먼저 확인한다 */
+    public Job active(int pNo, String kind) {
         List<Long> running = jdbc.queryForList(
                 "SELECT job_id FROM generation_job WHERE p_no = ? AND kind = ? AND status IN ('QUEUED','RUNNING') "
                         + "ORDER BY job_id DESC LIMIT 1",
                 Long.class, pNo, kind);
-        if (!running.isEmpty()) {
-            log.info("[job] 이미 진행 중인 작업 재사용 pNo={}, kind={}, jobId={}", pNo, kind, running.get(0));
-            return load(running.get(0), true);
+        return running.isEmpty() ? null : load(running.get(0), true);
+    }
+
+    /** onFailure: 작업이 실패하면 실행 (차감한 크레딧 환불 등). 진행 중인 작업을 재사용하면 실행하지 않는다 */
+    public Job start(int pNo, String mNo, String kind, Function<JobProgress, Object> work, Runnable onFailure) {
+        Job existing = active(pNo, kind);
+        if (existing != null) {
+            log.info("[job] 이미 진행 중인 작업 재사용 pNo={}, kind={}, jobId={}", pNo, kind, existing.getJobId());
+            return existing;
         }
 
         KeyHolder key = new GeneratedKeyHolder();
@@ -115,7 +126,7 @@ public class GenerationJobService {
 
         JobProgress progress = new JobProgress();
         progresses.put(jobId, progress);
-        executor.execute(() -> run(jobId, progress, work));
+        executor.execute(() -> run(jobId, progress, work, onFailure));
         return load(jobId, false);
     }
 
@@ -124,7 +135,7 @@ public class GenerationJobService {
         return learnedSeconds.getOrDefault(step, defaultSeconds);
     }
 
-    private void run(long jobId, JobProgress progress, Function<JobProgress, Object> work) {
+    private void run(long jobId, JobProgress progress, Function<JobProgress, Object> work, Runnable onFailure) {
         jdbc.update("UPDATE generation_job SET status = 'RUNNING', started_at = NOW() WHERE job_id = ?", jobId);
         try {
             Object result = work.apply(progress);
@@ -143,6 +154,13 @@ public class GenerationJobService {
             jdbc.update("UPDATE generation_job SET status = 'FAILED', error = ?, finished_at = NOW() WHERE job_id = ?",
                     userMessage(e), jobId);
             log.error("[job] 실패 jobId={}", jobId, e);
+            if (onFailure != null) {
+                try {
+                    onFailure.run();
+                } catch (Exception ex) {
+                    log.error("[job] 실패 후처리 오류 jobId={}", jobId, ex);
+                }
+            }
         }
     }
 

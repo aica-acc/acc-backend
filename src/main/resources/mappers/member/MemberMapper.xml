@@ -9,13 +9,14 @@
         <result property="phone"        column="m_phone"/>
         <result property="passwordHash" column="password_hash"/>
         <result property="role"         column="role"/>
+        <result property="credit"       column="credit"/>
         <result property="state"        column="state"/>
         <result property="createAt"     column="create_at"/>
         <result property="deleteAt"     column="delete_at"/>
     </resultMap>
 
     <sql id="memberColumns">
-        m_no, m_email, m_name, m_phone, password_hash, role, state, create_at, delete_at
+        m_no, m_email, m_name, m_phone, password_hash, role, credit, state, create_at, delete_at
     </sql>
 
     <select id="findByEmail" resultMap="MemberResultMap">

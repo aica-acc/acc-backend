@@ -17,6 +17,7 @@ import com.assistant.acc.dto.auth.AuthDtos.LoginRequest;
 import com.assistant.acc.dto.auth.AuthDtos.SignupRequest;
 import com.assistant.acc.mapper.member.MemberMapper;
 import com.assistant.acc.security.JwtTokenProvider;
+import com.assistant.acc.service.credit.CreditService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -29,6 +30,7 @@ public class AuthService {
     private final MemberMapper memberMapper;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider tokens;
+    private final CreditService creditService;
 
     @Value("${auth.test-login.enabled:false}")
     private boolean testLoginEnabled;
@@ -56,7 +58,9 @@ public class AuthService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 가입된 이메일입니다.");
         }
         Member m = createMember(email, name, req.getPhone(), req.getPassword(), Member.ROLE_USER, null);
-        return session(m);
+        // 가입 기념 크레딧: 전체 홍보물을 한 번 만들 수 있는 양 (credit.signup-bonus)
+        creditService.grantSignupBonus(m);
+        return session(memberMapper.findByNo(m.getMNo()));
     }
 
     public Map<String, Object> login(LoginRequest req) {
@@ -182,6 +186,7 @@ public class AuthService {
         v.put("name", m.getName());
         v.put("phone", m.getPhone());
         v.put("role", m.getRole());
+        v.put("credit", m.getCredit());
         v.put("state", m.getState());
         v.put("createAt", m.getCreateAt() == null ? null : m.getCreateAt().toString());
         return v;

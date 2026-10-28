@@ -21,6 +21,9 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+
+import com.assistant.acc.config.web.DemoGuardInterceptor;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
@@ -63,6 +66,9 @@ public class WebConfig implements WebMvcConfigurer {
                         .requestMatchers(PUBLIC_PATHS).permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/test/**").hasAnyRole("TEST", "ADMIN")
+                        // 화면에서 쓰지 않는 예전 유료 생성 API (생성은 /api/create-jobs, /api/editor/build-jobs 로). 크레딧 차감이 없어 관리자만
+                        .requestMatchers("/api/generate-prompt", "/api/create-image", "/api/analyze/**", "/api/liveposter/**")
+                        .hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(new JwtAuthFilter(tokens, memberMapper), UsernamePasswordAuthenticationFilter.class)
@@ -74,6 +80,11 @@ public class WebConfig implements WebMvcConfigurer {
 
         log.info("✅ Security 설정 완료 (공개 경로 외 로그인 필요)");
         return http.build();
+    }
+
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(new DemoGuardInterceptor()).addPathPatterns("/api/**");
     }
 
     @Bean

@@ -15,6 +15,12 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 import com.assistant.acc.service.image.ImageService;
 import com.assistant.acc.dto.image.PosterElementDTO;
+import com.assistant.acc.security.CurrentMember;
+import com.assistant.acc.security.DemoBlockedException;
+import com.assistant.acc.security.ProjectAccess;
+import com.assistant.acc.service.credit.CreditService;
+import com.assistant.acc.service.credit.CreditService.Charge;
+import org.springframework.jdbc.core.JdbcTemplate;
 import java.util.List;
 
 import java.util.HashMap;
@@ -28,6 +34,9 @@ public class ReportServiceImpl implements ReportService {
     private final ProposalMetadataMapper proposalMetadataMapper;
     private final RestTemplate restTemplate;
     private final ImageService imageService;
+    private final JdbcTemplate jdbc;
+    private final CreditService creditService;
+    private final ProjectAccess projectAccess;
 
     // AI 서버 기본 주소
     @Value("${python.api.url:http://localhost:5000}")
@@ -53,8 +62,40 @@ public class ReportServiceImpl implements ReportService {
         return callAiServer(projectNo, "package", "/package");
     }
 
-    // 🔥 공통 메서드: DB 조회 + AI 요청
+    /**
+     * 리포트는 프로젝트·종류마다 처음 한 번만 만들어 저장한다 (예전에는 화면을 열 때마다 AI 를 4번 불렀다).
+     * 데모(test) 계정은 저장된 것만 본다.
+     */
     private String callAiServer(Integer projectNo, String aiReportType, String endpoint) {
+        projectAccess.check(projectNo);
+        String cached = jdbc.query("SELECT content FROM report_cache WHERE p_no = ? AND report_type = ?",
+                rs -> rs.next() ? rs.getString(1) : null, projectNo, aiReportType);
+        if (cached != null) {
+            return cached;
+        }
+        if (CurrentMember.isTest()) {
+            throw new DemoBlockedException("데모에서는 미리 만들어 둔 리포트만 볼 수 있습니다.");
+        }
+        Charge charge = creditService.charge(CurrentMember.no(), CurrentMember.role(),
+                creditService.cost("report"), "리포트", projectNo);
+        String content;
+        try {
+            content = generate(projectNo, aiReportType, endpoint);
+        } catch (RuntimeException e) {
+            charge.refund();
+            throw e;
+        }
+        if (content == null || content.isBlank() || "AI 응답 없음".equals(content)) {
+            charge.refund();
+            return content;
+        }
+        jdbc.update("INSERT INTO report_cache (p_no, report_type, content) VALUES (?, ?, ?) "
+                + "ON DUPLICATE KEY UPDATE content = VALUES(content), created_at = NOW()", projectNo, aiReportType, content);
+        return content;
+    }
+
+    // 🔥 공통 메서드: DB 조회 + AI 요청
+    private String generate(Integer projectNo, String aiReportType, String endpoint) {
         // 1. DB 데이터 조회 (기획서 정보가 없으면 가짜 값으로 채우지 않고 중단)
         ProposalMetadata meta = proposalMetadataMapper.findByPNo(projectNo);
         if (meta == null) {

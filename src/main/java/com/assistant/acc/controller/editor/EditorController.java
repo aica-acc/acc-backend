@@ -12,6 +12,10 @@ import com.assistant.acc.service.editor.EditorImageSaveService;
 import com.assistant.acc.service.editor.EditorTemplateService;
 import com.assistant.acc.security.CurrentMember;
 import com.assistant.acc.security.ProjectAccess;
+import com.assistant.acc.service.credit.CreditService;
+import com.assistant.acc.service.credit.CreditService.Charge;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.assistant.acc.service.job.GenerationJobService;
 import com.assistant.acc.service.job.GenerationJobService.Job;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +42,8 @@ public class EditorController {
     private final ProjectAccess projectAccess;
     private final GenerationJobService jobService;
     private final RestTemplate restTemplate;
+    private final CreditService creditService;
+    private final ObjectMapper objectMapper;
 
     @Value("${python.api.url:http://localhost:5000}")
     private String pythonApiUrl;
@@ -53,8 +59,57 @@ public class EditorController {
     @PostMapping("/build-jobs")
     public Job startBuildJob(@RequestParam("pNo") Integer pNo, @RequestBody String postersJson) {
         projectAccess.check(pNo);
+        Job running = jobService.active(pNo, GenerationJobService.EDITOR_BUILD);
+        if (running != null) {
+            return running;
+        }
+        boolean demo = CurrentMember.isTest();
+        Charge charge = demo ? null : chargeBuild(pNo, postersJson);
         return jobService.start(pNo, CurrentMember.no(), GenerationJobService.EDITOR_BUILD,
-                () -> editorBuildService.buildAndSaveTemplates(pNo, postersJson));
+                progress -> editorBuildService.buildAndSaveTemplates(pNo, postersJson, demo),
+                charge == null ? null : charge::refund);
+    }
+
+    /**
+     * 파생물 크레딧 차감. 같은 베이스로 이미 만든 종류는 AI 가 재사용(derivative_cache)하므로 새로 만들 종류만 센다.
+     * 데모(test) 계정은 차감하지 않고 AI 가 미리 만든 결과만 쓴다 (demo=true)
+     */
+    private Charge chargeBuild(int pNo, String postersJson) {
+        List<Map<String, Object>> posters;
+        try {
+            posters = objectMapper.readValue(postersJson, new TypeReference<List<Map<String, Object>>>() {});
+        } catch (Exception e) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "파생물 요청 형식이 올바르지 않습니다.");
+        }
+        Map<String, Object> made = derivatives(pNo);
+        int cost = 0;
+        for (Map<String, Object> poster : posters) {
+            String posterBase = promotionKey(poster.get("posterImageUrl"));
+            String mascotBase = promotionKey(poster.get("mascotImageUrl"));
+            Object types = poster.get("types");
+            if (!(types instanceof List<?> list)) {
+                continue;
+            }
+            for (Object t : list) {
+                String madeBase = promotionKey(made.get(String.valueOf(t)));
+                if (madeBase != null && (madeBase.equals(posterBase) || madeBase.equals(mascotBase))) {
+                    continue; // 같은 베이스로 이미 만든 결과 재사용
+                }
+                cost += creditService.derivativeCost(String.valueOf(t));
+            }
+        }
+        return creditService.charge(CurrentMember.no(), CurrentMember.role(), cost, "파생물 생성", pNo);
+    }
+
+    /** 경로·URL 에서 "data/promotion/" 이후 부분 (웹 경로와 절대경로를 같은 값으로 비교) */
+    private static String promotionKey(Object path) {
+        if (path == null) {
+            return null;
+        }
+        String s = path.toString().replace('\\', '/');
+        int i = s.indexOf("data/promotion/");
+        return i < 0 ? s : s.substring(i + "data/promotion/".length());
     }
 
     /** 이 프로젝트의 최근 빌드 작업 (진행 화면을 다시 열었을 때 이어서 보기). 없으면 204 */
@@ -122,8 +177,17 @@ public class EditorController {
                 pNo, postersJson != null ? postersJson.length() : 0);
 
         projectAccess.check(pNo);
-        EditorBuildResponse response = editorBuildService.buildAndSaveTemplates(pNo, postersJson);
-        return ResponseEntity.ok(response);
+        boolean demo = CurrentMember.isTest();
+        Charge charge = demo ? null : chargeBuild(pNo, postersJson);
+        try {
+            EditorBuildResponse response = editorBuildService.buildAndSaveTemplates(pNo, postersJson, demo);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            if (charge != null) {
+                charge.refund();
+            }
+            throw e;
+        }
         }
     // ==============================
     // 2) 템플릿 목록 조회
@@ -184,8 +248,16 @@ public class EditorController {
         log.info("🎨 [EditorController] /ai-render layoutType={}",
                 request.getLayoutType());
 
-        EditorAiRenderResponse res = editorAiRenderService.renderWithAi(request);
-        return ResponseEntity.ok(res);
+        // 데모 계정은 DemoGuardInterceptor 가 막는다
+        Charge charge = creditService.charge(CurrentMember.no(), CurrentMember.role(),
+                creditService.cost("ai-render"), "AI 색상 추천", null);
+        try {
+            EditorAiRenderResponse res = editorAiRenderService.renderWithAi(request);
+            return ResponseEntity.ok(res);
+        } catch (RuntimeException e) {
+            charge.refund();
+            throw e;
+        }
     }
 
     // ==============================
