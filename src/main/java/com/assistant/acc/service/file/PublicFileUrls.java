@@ -77,8 +77,8 @@ public class PublicFileUrls {
         if (text == null || text.isEmpty()) {
             return text;
         }
-        // AI 가 앞의 "/" 없이 "static/..." 로 주는 값도 있다 (배너 트렌드 이미지 등)
-        String out = text.startsWith("static/") ? "/" + text : text;
+        // AI 가 앞의 "/" 없이 "static/...", "data/promotion/..." 로 주는 값도 있다 (배너 트렌드 이미지, 리플렛·마스코트 영상 등)
+        String out = text.startsWith("static/") || text.startsWith("data/promotion/") ? "/" + text : text;
         if (out.contains(PROMOTION)) {
             out = replacePromotion(out);
         }

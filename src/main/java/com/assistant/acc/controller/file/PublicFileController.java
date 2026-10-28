@@ -10,9 +10,13 @@ import java.util.Arrays;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.util.StreamUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -45,28 +49,30 @@ public class PublicFileController {
     @Value("${python.api.url:http://localhost:5000}")
     private String pythonApiUrl;
 
+    /**
+     * 서버에 있는 파일은 Resource 로 돌려준다: Spring 이 Range 요청을 206 으로 나눠 보내므로
+     * 영상 넘기기가 되고, Range 응답이 없으면 재생하지 않는 Safari(iOS)에서도 재생된다.
+     */
     @GetMapping("/files/{name:.+}")
-    public void file(@PathVariable String name, HttpServletResponse response) throws IOException {
+    public ResponseEntity<Resource> file(@PathVariable String name, HttpServletResponse response) throws IOException {
         int dot = name.lastIndexOf('.');
         Target t = urls.decode(dot > 0 ? name.substring(0, dot) : name);
         if (t == null) {
-            response.sendError(HttpStatus.NOT_FOUND.value());
-            return;
+            return ResponseEntity.notFound().build();
         }
         if (t.isAiStatic()) {
             proxyAiStatic(t.path(), response);
-            return;
+            return null;
         }
         Path file = urls.fileOf(t);
         if (file == null || !Files.isRegularFile(file)) {
-            response.sendError(HttpStatus.NOT_FOUND.value());
-            return;
+            return ResponseEntity.notFound().build();
         }
         String type = Files.probeContentType(file);
-        response.setContentType(type != null ? type : "application/octet-stream");
-        response.setContentLengthLong(Files.size(file));
-        response.setHeader(HttpHeaders.CACHE_CONTROL, CACHE);
-        Files.copy(file, response.getOutputStream());
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(type != null ? type : "application/octet-stream"))
+                .header(HttpHeaders.CACHE_CONTROL, CACHE)
+                .body(new FileSystemResource(file));
     }
 
     private void proxyAiStatic(String path, HttpServletResponse response) throws IOException {
