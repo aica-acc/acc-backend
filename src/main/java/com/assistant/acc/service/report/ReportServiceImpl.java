@@ -7,10 +7,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.server.ResponseStatusException;
 import com.assistant.acc.service.image.ImageService;
 import com.assistant.acc.dto.image.PosterElementDTO;
 import java.util.List;
@@ -53,33 +55,26 @@ public class ReportServiceImpl implements ReportService {
 
     // 🔥 공통 메서드: DB 조회 + AI 요청
     private String callAiServer(Integer projectNo, String aiReportType, String endpoint) {
-        // 1. DB 데이터 조회
+        // 1. DB 데이터 조회 (기획서 정보가 없으면 가짜 값으로 채우지 않고 중단)
+        ProposalMetadata meta = proposalMetadataMapper.findByPNo(projectNo);
+        if (meta == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "기획서 정보가 없어 보고서를 만들 수 없습니다.");
+        }
         Map<String, String> metadataMap = new HashMap<>();
         try {
-            ProposalMetadata meta = proposalMetadataMapper.findByPNo(projectNo);
-            if (meta != null) {
-                metadataMap.put("title", meta.getTitle());
-                // 날짜 포맷팅
-                String dateStr = "";
-                if (meta.getFestivalStartDate() != null && meta.getFestivalEndDate() != null) {
-                    dateStr = meta.getFestivalStartDate() + " ~ " + meta.getFestivalEndDate();
-                }
-                metadataMap.put("date", dateStr);
-                metadataMap.put("location", meta.getLocation() != null ? meta.getLocation() : "");
-                metadataMap.put("host", meta.getHost() != null ? meta.getHost() : "");
-                metadataMap.put("programs", meta.getProgramName() != null ? meta.getProgramName() : "");
-                metadataMap.put("concept", meta.getConceptDescription() != null ? meta.getConceptDescription() : "");
-                metadataMap.put("contact", "문화관광과 (000-0000-0000)");
-            } else {
-                log.warn("⚠️ DB 데이터 없음 (pNo={}). 더미 데이터 사용.", projectNo);
-                metadataMap.put("title", "테스트 축제");
-                metadataMap.put("date", "2025.01.01");
-                metadataMap.put("location", "서울");
-                metadataMap.put("host", "테스트 주최");
-                metadataMap.put("programs", "테스트 프로그램");
-                metadataMap.put("concept", "테스트 컨셉");
-                metadataMap.put("contact", "010-1234-5678");
+            metadataMap.put("title", meta.getTitle());
+            // 날짜 포맷팅
+            String dateStr = "";
+            if (meta.getFestivalStartDate() != null && meta.getFestivalEndDate() != null) {
+                dateStr = meta.getFestivalStartDate() + " ~ " + meta.getFestivalEndDate();
             }
+            metadataMap.put("date", dateStr);
+            metadataMap.put("location", meta.getLocation() != null ? meta.getLocation() : "");
+            metadataMap.put("host", meta.getHost() != null ? meta.getHost() : "");
+            metadataMap.put("programs", meta.getProgramName() != null ? meta.getProgramName() : "");
+            metadataMap.put("concept", meta.getConceptDescription() != null ? meta.getConceptDescription() : "");
+            // 문의처는 기획서에 적힌 값만 쓴다 (없으면 비워 두고 화면에서 숨김)
+            metadataMap.put("contact", meta.getContactInfo() != null ? meta.getContactInfo() : "");
 
             // ✅ (2) [추가] 이미지 정보 가져오기 (ImageService 활용)
             List<PosterElementDTO> images = imageService.getProjectImages(projectNo);
@@ -132,7 +127,7 @@ public class ReportServiceImpl implements ReportService {
 
         } catch (Exception e) {
             log.error("❌ AI 통신 오류 ({})", endpoint, e);
-            throw new RuntimeException("AI 서버 연결 실패: " + e.getMessage());
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "보고서를 만들지 못했습니다. 잠시 후 다시 시도해 주세요.");
         }
     }
 }

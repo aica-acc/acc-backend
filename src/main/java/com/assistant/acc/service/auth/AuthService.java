@@ -30,7 +30,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider tokens;
 
-    @Value("${auth.test-login.enabled:true}")
+    @Value("${auth.test-login.enabled:false}")
     private boolean testLoginEnabled;
 
     @Value("${auth.test.email:test@acc.local}")

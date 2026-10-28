@@ -22,8 +22,8 @@ files.poster-images-dir=./홍보물
 # 32바이트 이상 임의 문자열. 비우면 기동할 때마다 랜덤 키 (재시작 시 로그인 풀림)
 auth.jwt.secret=
 auth.jwt.expire-hours=12
-# 'test 계정으로 로그인하기' 허용 여부 (외부 공개 서버에서는 false 권장)
-auth.test-login.enabled=true
+# 'test 계정으로 로그인하기' 허용 여부. 기본은 꺼짐, 로컬 개발·시연할 때만 true
+auth.test-login.enabled=false
 auth.test.email=test@acc.local
 # 관리자 계정: 비밀번호(8자 이상)를 주면 최초 기동 시 생성
 auth.admin.email=admin@acc.local
