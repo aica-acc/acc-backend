@@ -16,8 +16,10 @@ import org.apache.catalina.User;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
@@ -128,13 +130,19 @@ public class ProjectServiceImpl implements ProjectService {
         Integer pNo = project.getProjectNo();
         System.out.println("[Service - Step 1] ✅ 프로젝트 생성 완료, pNo = " + pNo);
 
+        return analyzeProposal(pNo, file.getBytes(), file.getOriginalFilename(), theme, keywords, title);
+    }
+
+    @Override
+    public ProposalMetadata analyzeProposal(int pNo, byte[] file, String filename, String theme, String keywords,
+            String title) throws IOException {
         // 2) Python 서버 호출 준비
         System.out.println("[Service - Step 2] Python 요청 준비 중...");
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-        body.add("file", new ByteArrayResource(file.getBytes()) {
+        body.add("file", new ByteArrayResource(file) {
             @Override
             public String getFilename() {
-                return file.getOriginalFilename();
+                return filename;
             }
         });
         body.add("theme", theme);
@@ -327,7 +335,11 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     public RegionTrendResponseDTO analyzeRegionTrend(String m_no, String festivalStartDate) {
-        Integer pNo = projectMapper.selectLatestProjectNo(m_no);
+        return analyzeRegionTrendFor(projectMapper.selectLatestProjectNo(m_no), festivalStartDate);
+    }
+
+    @Override
+    public RegionTrendResponseDTO analyzeRegionTrendFor(int pNo, String festivalStartDate) {
         ProposalMetadata meta = projectMapper.selectProposalMetadata(pNo);
 
         log.info("📡 [ServiceImpl] 지역 트렌드 요청: title={}, host={}", meta.getTitle(), meta.getHost());
@@ -384,8 +396,9 @@ public class ProjectServiceImpl implements ProjectService {
             return response.getBody();
 
         } catch (Exception e) {
+            // 예전에는 빈 결과를 200 으로 돌려줘 크레딧도 환불되지 않았다 (#31). 실패는 실패로
             log.error("❌ Python 지역 트렌드 분석 실패", e);
-            return new RegionTrendResponseDTO(); // 빈 껍데기 반환
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "지역 트렌드를 분석하지 못했습니다. 잠시 후 다시 시도해 주세요.");
         }
     }
 
