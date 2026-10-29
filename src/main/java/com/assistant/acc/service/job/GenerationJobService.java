@@ -45,6 +45,7 @@ public class GenerationJobService {
 
     public static final String EDITOR_BUILD = "EDITOR_BUILD";
     public static final String CREATE_IMAGES = "CREATE_IMAGES";
+    public static final String ANALYZE_PROPOSAL = "ANALYZE_PROPOSAL";
 
     // 백엔드가 직접 단계를 진행하는 작업의 진행 상황 (작업 번호 → 진행). 서버 메모리에만 둔다
     private final Map<Long, JobProgress> progresses = new ConcurrentHashMap<>();

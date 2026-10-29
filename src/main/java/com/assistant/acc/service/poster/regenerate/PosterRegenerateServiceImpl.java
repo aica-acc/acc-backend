@@ -30,7 +30,7 @@ public class PosterRegenerateServiceImpl implements PosterRegenerateService{
         dbService.updatePrompt(regen);
 
         // 2. Python 호출
-        var pythonImage = pythonService.regenerate(regen);
+        var pythonImage = pythonService.regenerate(regen, promotionType);
         regen.setNewImageUrl(pythonImage.getImageUrl());
 
         // 3. 파일 overwrite
