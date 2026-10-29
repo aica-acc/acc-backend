@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 
+import com.assistant.acc.service.file.AiPromotionFiles;
 import com.assistant.acc.service.file.PublicFileUrls;
 import com.assistant.acc.service.file.PublicFileUrls.Target;
 
@@ -45,6 +46,7 @@ public class PublicFileController {
 
     private final PublicFileUrls urls;
     private final RestTemplate restTemplate;
+    private final AiPromotionFiles aiFiles;
 
     @Value("${python.api.url:http://localhost:5000}")
     private String pythonApiUrl;
@@ -64,6 +66,10 @@ public class PublicFileController {
             proxyAiStatic(t.path(), response);
             return null;
         }
+        if (t.isAiPromotion()) {
+            proxyAiPromotion(t.path(), response);
+            return null;
+        }
         Path file = urls.fileOf(t);
         if (file == null || !Files.isRegularFile(file)) {
             return ResponseEntity.notFound().build();
@@ -73,6 +79,23 @@ public class PublicFileController {
                 .contentType(MediaType.parseMediaType(type != null ? type : "application/octet-stream"))
                 .header(HttpHeaders.CACHE_CONTROL, CACHE)
                 .body(new FileSystemResource(file));
+    }
+
+    private void proxyAiPromotion(String path, HttpServletResponse response) throws IOException {
+        int slash = path.indexOf('/');
+        if (slash <= 0 || path.indexOf('/', slash + 1) >= 0) {
+            response.sendError(HttpStatus.NOT_FOUND.value());
+            return;
+        }
+        try {
+            response.setHeader(HttpHeaders.CACHE_CONTROL, CACHE);
+            aiFiles.stream(path.substring(0, slash), path.substring(slash + 1), response::setContentType, response.getOutputStream());
+        } catch (HttpStatusCodeException e) {
+            response.sendError(e.getStatusCode().value());
+        } catch (Exception e) {
+            log.warn("AI 원본 이미지 중계 실패: {} ({})", path, e.getMessage());
+            response.sendError(HttpStatus.BAD_GATEWAY.value());
+        }
     }
 
     private void proxyAiStatic(String path, HttpServletResponse response) throws IOException {

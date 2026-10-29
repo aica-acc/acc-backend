@@ -21,7 +21,8 @@ public class RegenerateFileService {
                 regen.getProjectNo(),
                 newFileName,
                 regen.getOldFileName(),
-                promotionType
+                promotionType,
+                regen.getBatch()
         );
 
         String newPath = "/data/promotion/" +

@@ -5,14 +5,18 @@ import com.assistant.acc.dto.project.RegionTrendResponseDTO;
 import com.assistant.acc.security.CurrentMember;
 import com.assistant.acc.service.credit.CreditService;
 import com.assistant.acc.service.credit.CreditService.Charge;
+import com.assistant.acc.service.job.GenerationJobService;
+import com.assistant.acc.service.job.GenerationJobService.Job;
 import com.assistant.acc.service.poster.PosterService;
 import com.assistant.acc.service.project.ProjectDeleteService;
 import com.assistant.acc.service.project.ProjectService;
 
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpRequest;
@@ -28,14 +32,16 @@ public class ProjectController {
     private final ProjectService projectService;
     private final ProjectDeleteService projectDeleteService;
     private final CreditService creditService;
+    private final GenerationJobService jobService;
     // 생성자 주입 방식 (권장)
 
     @Autowired
     public ProjectController(PosterService posterService, ProjectService projectService,
-            ProjectDeleteService projectDeleteService, CreditService creditService) {
+            ProjectDeleteService projectDeleteService, CreditService creditService, GenerationJobService jobService) {
         this.projectService = projectService;
         this.projectDeleteService = projectDeleteService;
         this.creditService = creditService;
+        this.jobService = jobService;
     }
 
     /** 유료 분석 차감 (관리자는 0). 데모 계정은 DemoGuardInterceptor 가 먼저 막는다 */
@@ -84,6 +90,104 @@ public class ProjectController {
             charge.refund();
             return ResponseEntity.status(500).build();
         }
+    }
+
+    /**
+     * 기획서 분석 → 트렌드 → 지역 트렌드를 백그라운드 작업으로 (트러블슈팅 #32).
+     * 예전에는 화면이 세 요청을 차례로 보내고 끝날 때까지 로딩 화면에 묶여 있었고, 새로고침하면 결과를 잃었다.
+     * 프로젝트는 여기서 만들어 작업 번호와 함께 돌려주고, 화면은 GET /api/jobs/{id} 로 진행을 본다.
+     * 지역 트렌드가 실패해도 기획서·트렌드 결과는 살리고 그 몫의 크레딧만 환불한다.
+     */
+    @PostMapping("/analyze/jobs")
+    public Job startAnalyze(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("theme") String theme,
+            @RequestParam("keywords") String keywords,
+            @RequestParam("title") String title) throws IOException {
+        String mNo = CurrentMember.no();
+        Charge proposalCharge = charge("analyze-proposal", "기획서 분석");
+        Charge trendCharge = charge("trend", "트렌드 분석");
+        Charge regionCharge = charge("trend", "지역 트렌드 분석");
+        byte[] bytes;
+        int pNo;
+        try {
+            bytes = file.getBytes(); // 요청이 끝나면 업로드 파일은 사라지므로 미리 읽는다
+            pNo = projectService.createProjectAndSaveInput(theme, keywords, title, mNo).getProjectNo();
+        } catch (RuntimeException | IOException e) {
+            proposalCharge.refund();
+            trendCharge.refund();
+            regionCharge.refund();
+            throw e;
+        }
+        String filename = file.getOriginalFilename();
+        String mainKeyword = firstKeyword(keywords);
+
+        return jobService.start(pNo, mNo, GenerationJobService.ANALYZE_PROPOSAL, progress -> {
+            progress.step("proposal", "기획서 분석", jobService.expectSeconds("proposal", 30))
+                    .step("trend", "트렌드 분석", jobService.expectSeconds("trend", 40))
+                    .step("region_trend", "지역 트렌드 분석", jobService.expectSeconds("region_trend", 30));
+
+            ProposalMetadata proposal = progress.run("proposal", () -> {
+                try {
+                    return projectService.analyzeProposal(pNo, bytes, filename, theme, keywords, title);
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                }
+            });
+            String start = proposal.getFestivalStartDate() == null ? ""
+                    : new java.text.SimpleDateFormat("yyyy-MM-dd").format(proposal.getFestivalStartDate());
+
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("pNo", pNo);
+            result.put("proposal", proposal);
+            result.put("festivalStartDate", start);
+
+            Map<String, Object> trend = progress.run("trend", () -> {
+                try {
+                    return projectService.analyzeTotalTrend(mainKeyword, proposal.getTitle(), start);
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                }
+            });
+            if (trend == null || trend.containsKey("error")) {
+                trendCharge.refund();
+                result.put("trend", null);
+                result.put("trendError", "트렌드를 분석하지 못했습니다.");
+            } else {
+                result.put("trend", trend);
+            }
+
+            // 지역 트렌드 실패는 작업 실패가 아니다 (단계 안에서 받아 결과에 사유를 남긴다)
+            RegionTrendResponseDTO region = progress.run("region_trend", () -> {
+                try {
+                    return projectService.analyzeRegionTrendFor(pNo, start);
+                } catch (RuntimeException e) {
+                    log.warn("[analyze] 지역 트렌드 실패 pNo={}: {}", pNo, e.getMessage());
+                    return null;
+                }
+            });
+            result.put("regionTrend", region);
+            if (region == null) {
+                regionCharge.refund();
+                result.put("regionTrendError", "지역 트렌드를 분석하지 못했습니다.");
+            }
+            return result;
+        }, () -> {
+            // 기획서 분석이 실패하면 작업 전체 실패: 아직 쓰지 않은 몫까지 모두 환불 (환불은 한 번만 된다)
+            proposalCharge.refund();
+            trendCharge.refund();
+            regionCharge.refund();
+        });
+    }
+
+    /** keywords 는 화면이 보내는 JSON 배열 문자열 ["담양","산타"] */
+    private static String firstKeyword(String keywords) {
+        String s = keywords == null ? "" : keywords.trim();
+        if (s.startsWith("[")) {
+            s = s.substring(1, s.length() - 1);
+        }
+        String first = s.split(",")[0].trim();
+        return first.replaceAll("^\"|\"$", "");
     }
 
     @GetMapping("/analyze/lastst")

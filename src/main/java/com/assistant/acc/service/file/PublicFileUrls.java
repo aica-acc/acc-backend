@@ -60,13 +60,15 @@ public class PublicFileUrls {
     @Value("${react.base-path}")
     private String reactBasePath;
 
-    @Value("${python.base-dir}")
-    private String pythonBaseDir;
-
     /** 토큰이 가리키는 파일 */
     public record Target(char kind, String path) {
         public boolean isAiStatic() {
             return kind == 's';
+        }
+
+        /** AI 가 만든 원본 이미지 ({type}/{파일}) — AI 내부 파일 API 에서 받아 전달 (#21) */
+        public boolean isAiPromotion() {
+            return kind == 'i';
         }
     }
 
@@ -167,11 +169,10 @@ public class PublicFileUrls {
         return kind == 'p' || kind == 's' || kind == 'i' ? new Target(kind, path) : null;
     }
 
-    /** 디스크 파일 위치 (AI 정적 파일은 null — 컨트롤러가 AI 에서 받아 전달) */
+    /** 디스크 파일 위치 (AI 파일은 null — 컨트롤러가 AI 에서 받아 전달) */
     public Path fileOf(Target t) {
         Path root = switch (t.kind()) {
             case 'p' -> Paths.get(reactBasePath, "public", "data", "promotion");
-            case 'i' -> Paths.get(pythonBaseDir);
             default -> null;
         };
         if (root == null) {

@@ -9,10 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -23,17 +20,27 @@ public class FileStorageService {
     @Value("${react.base-path}")
     private String baseDir;
 
-    @Value("${python.base-dir}")
-    private String pythonPromotionBaseDir;
-
     private final GeneratedAssetMapper generatedAssetMapper;
     private final GenerateFilePathMapper generateFilePathMapper;
+    // AI 결과는 공유 볼륨 경로가 아니라 AI 내부 파일 API 로 받는다 (#21)
+    private final AiPromotionFiles aiFiles;
 
     /**
-     * 프로모션 타입에 따른 Python 원본 경로 생성
+     * AI 결과를 받아 dest 에 저장하고 AI 쪽 원본을 지운다 (이동). 지우기에 실패하면 받은 파일도 지운다.
      */
-    private String getPythonSourceDir(String promotionType) {
-        return Paths.get(pythonPromotionBaseDir, promotionType).toString();
+    private void moveFromAi(String promotionType, String batch, String filename, File dest, String missingMessage) {
+        if (!aiFiles.download(promotionType, batch, filename, dest.toPath())) {
+            throw new IllegalStateException(missingMessage + promotionType + "/" + filename);
+        }
+        System.out.println("✅ 파일 복사 성공: " + dest.getAbsolutePath());
+        try {
+            aiFiles.delete(promotionType, batch, filename);
+        } catch (RuntimeException e) {
+            // ⚠️ 롤백: 복사된 파일도 삭제하고 예외 던지기
+            dest.delete();
+            throw new RuntimeException("원본 파일 삭제 실패, 전체 작업 롤백: " + promotionType + "/" + filename, e);
+        }
+        System.out.println("✅ 원본 파일 삭제 성공, 이동 완료: " + promotionType + "/" + filename);
     }
 
     public void saveGeneratedPosterImage(
@@ -42,7 +49,8 @@ public class FileStorageService {
             String filename,
             Integer promptNo,
             Integer promotionNo,
-            String promotionType) {
+            String promotionType,
+            String batch) {
         // ⭐ 1. React public 폴더의 저장 경로 정의
         String targetDir = Paths.get(
                 baseDir,
@@ -58,41 +66,11 @@ public class FileStorageService {
             dir.mkdirs(); // 구조 전체 자동 생성
         }
 
-        // ⭐ 2. FastAPI가 저장한 기본 폴더 (타입별 경로)
-        String pythonSourceDir = getPythonSourceDir(promotionType);
-        String pythonSourcePath = Paths.get(pythonSourceDir, filename).toString();
-
-        File src = new File(pythonSourcePath);
+        // ⭐ 2. AI 결과 이동 (받기 + 원본 삭제, 실패 시 롤백)
         File dest = new File(Paths.get(targetDir, filename).toString());
+        moveFromAi(promotionType, batch, filename, dest, "원본 이미지 파일이 존재하지 않습니다: ");
 
-        // ⭐ 3. 파일 복사 + 예외 처리 + 롤백
-        if (!src.exists()) {
-            throw new IllegalStateException("원본 이미지 파일이 존재하지 않습니다: " + src.getAbsolutePath());
-        }
-
-        try {
-            // renameTo 대신 Files.copy 사용 (더 안정적)
-            Files.copy(
-                    src.toPath(),
-                    dest.toPath(),
-                    StandardCopyOption.REPLACE_EXISTING);
-
-            System.out.println("✅ 파일 복사 성공: " + dest.getAbsolutePath());
-
-            // 원본 파일 삭제 (이동 완료)
-            if (!src.delete()) {
-                // ⚠️ 롤백: 복사된 파일도 삭제하고 예외 던지기
-                dest.delete();
-                throw new RuntimeException("원본 파일 삭제 실패, 전체 작업 롤백: " + src.getAbsolutePath());
-            }
-
-            System.out.println("✅ 원본 파일 삭제 성공, 이동 완료: " + src.getAbsolutePath());
-
-        } catch (IOException e) {
-            throw new RuntimeException("파일 복사 실패: " + src.getAbsolutePath() + " → " + dest.getAbsolutePath(), e);
-        }
-
-        // ⭐ 4. generated_asset DB 저장
+        // ⭐ 3. generated_asset DB 저장
         GeneratedAsset asset = GeneratedAsset.builder()
                 .promotionNo(promotionNo)
                 .promptNo(promptNo)
@@ -104,7 +82,7 @@ public class FileStorageService {
         generatedAssetMapper.AssetInsert(asset);
         Integer generatedAssetNo = asset.getGeneratedAssetNo();
 
-        // ⭐ 5. generate_file_path DB 저장
+        // ⭐ 4. generate_file_path DB 저장
         String dbPath = "/data/promotion/" + memberNo + "/" + projectNo + "/" + promotionType + "/" + filename;
 
         GenerateFilePath path = GenerateFilePath.builder()
@@ -122,7 +100,8 @@ public class FileStorageService {
             Integer projectNo,
             String newFilename,
             String oldFilename,
-            String promotionType) {
+            String promotionType,
+            String batch) {
 
         String targetDir = Paths.get(
                 baseDir,
@@ -139,45 +118,15 @@ public class FileStorageService {
             dir.mkdirs();
         }
 
-        /* ⭐ (1) Python 생성 폴더에서 새 파일 가져오기 */
-        String pythonSourceDir = getPythonSourceDir(promotionType);
-        String pythonSourcePath = Paths.get(pythonSourceDir, newFilename).toString();
-
-        File src = new File(pythonSourcePath);
-
-        if (!src.exists()) {
-            throw new IllegalStateException("재생성된 이미지 파일이 존재하지 않습니다: " + src.getAbsolutePath());
-        }
-
-        /* ⭐ (2) 기존 파일 삭제 */
+        /* ⭐ (1) 기존 파일 삭제 */
         File oldFile = new File(targetDir + File.separator + oldFilename);
         if (oldFile.exists() && !oldFile.delete()) {
             System.out.println("⚠️ 기존 파일 삭제 실패: " + oldFile.getAbsolutePath());
         }
 
-        /* ⭐ (3) 새 파일 복사 + 롤백 */
+        /* ⭐ (2) AI 에서 새 파일 이동 + 롤백 */
         File dest = new File(targetDir + File.separator + newFilename);
-        try {
-            Files.copy(
-                    src.toPath(),
-                    dest.toPath(),
-                    StandardCopyOption.REPLACE_EXISTING);
-
-            System.out.println("✅ 재생성 파일 복사 성공: " + dest.getAbsolutePath());
-
-            // 원본 파일 삭제 (이동 완료)
-            if (!src.delete()) {
-                // ⚠️ 롤백: 복사된 파일도 삭제하고 예외 던지기
-                dest.delete();
-                throw new RuntimeException("재생성 원본 파일 삭제 실패, 전체 작업 롤백: " + src.getAbsolutePath());
-            }
-
-            System.out.println("✅ 재생성 원본 파일 삭제 성공, 이동 완료: " + src.getAbsolutePath());
-
-        } catch (IOException e) {
-            throw new RuntimeException("재생성 파일 복사 실패: " + src.getAbsolutePath() + " → " + dest.getAbsolutePath(), e);
-        }
-
+        moveFromAi(promotionType, batch, newFilename, dest, "재생성된 이미지 파일이 존재하지 않습니다: ");
     }
 
     /**
@@ -219,36 +168,18 @@ public class FileStorageService {
     }
 
     /**
-     * Python 폴더에서 React public으로 파일만 복사 (DB 저장 없음)
+     * AI 폴더에서 React public으로 파일만 복사 (DB 저장 없음)
      */
     public void copyExistingFilesToReact(String memberNo, Integer projectNo, String promotionType) {
-        String pythonDir = getPythonSourceDir(promotionType);
-        String filePrefix = promotionType + "_";
+        String batch = AiPromotionFiles.batchOf(memberNo, projectNo);
+        List<String> files = aiFiles.list(promotionType, batch);
 
-        File dir = new File(pythonDir);
-        File[] files = dir.listFiles((d, name) ->
-                name.startsWith(filePrefix) && name.endsWith(".png")
-        );
-
-        if (files == null || files.length == 0) {
-            throw new IllegalStateException("Python 폴더에 파일이 없습니다: " + pythonDir);
+        if (files.isEmpty()) {
+            throw new IllegalStateException("AI 폴더에 파일이 없습니다: " + promotionType + "/" + batch);
         }
 
-        System.out.println("🔄 [파일 복사 모드] Python → React public 복사 시작...");
+        System.out.println("🔄 [파일 복사 모드] AI → React public 복사 시작...");
 
-        for (File file : files) {
-            String filename = file.getName();
-            System.out.println("  📋 파일 복사 시작: " + filename);
-            copyFileOnlyWithoutDB(memberNo, projectNo, filename, promotionType);
-        }
-
-        System.out.println("✅ [파일 복사 완료] " + files.length + "개 파일이 React public으로 복사되었습니다.");
-    }
-
-    /**
-     * DB 저장 없이 파일만 복사 (private helper)
-     */
-    private void copyFileOnlyWithoutDB(String memberNo, Integer projectNo, String filename, String promotionType) {
         String targetDir = Paths.get(
                 baseDir,
                 "public",
@@ -258,80 +189,15 @@ public class FileStorageService {
                 projectNo.toString(),
                 promotionType
         ).toString();
+        new File(targetDir).mkdirs();
 
-        File dir = new File(targetDir);
-        if (!dir.exists()) {
-            dir.mkdirs();
+        for (String filename : files) {
+            System.out.println("  📋 파일 복사 시작: " + filename);
+            if (!aiFiles.download(promotionType, batch, filename, Paths.get(targetDir, filename))) {
+                System.out.println("  ⚠️ AI 파일 없음: " + promotionType + "/" + filename);
+            }
         }
 
-        String pythonSourceDir = getPythonSourceDir(promotionType);
-        String pythonSourcePath = Paths.get(pythonSourceDir, filename).toString();
-
-        File src = new File(pythonSourcePath);
-        File dest = new File(Paths.get(targetDir, filename).toString());
-
-        if (!src.exists()) {
-            System.out.println("  ⚠️ Python 파일 없음: " + src.getAbsolutePath());
-            return;
-        }
-
-        try {
-            Files.copy(
-                    src.toPath(),
-                    dest.toPath(),
-                    StandardCopyOption.REPLACE_EXISTING
-            );
-            System.out.println("  ✅ 파일 복사 성공: " + dest.getAbsolutePath());
-        } catch (IOException e) {
-            throw new RuntimeException("파일 복사 실패: " + filename, e);
-        }
-    }
-
-    /**
-     * Python 폴더에 이미 생성된 이미지가 있는지 확인
-     */
-    public boolean checkIfImagesExistInPythonFolder(String promotionType) {
-        String pythonDir = getPythonSourceDir(promotionType);
-        String filePrefix = promotionType + "_";
-
-        File dir = new File(pythonDir);
-
-        if (!dir.exists()) {
-            return false;
-        }
-
-        File[] files = dir.listFiles((d, name) -> name.startsWith(filePrefix) && name.endsWith(".png"));
-
-        if (files != null && files.length >= 4) {
-            System.out.println("  📁 Python 폴더에 " + promotionType + " 이미지 " + files.length + "개 발견");
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * Python 폴더에서 파일 목록 가져오기
-     */
-    public File[] getPythonFolderImages(String promotionType) {
-        String pythonDir = getPythonSourceDir(promotionType);
-        String filePrefix = promotionType + "_";
-
-        File dir = new File(pythonDir);
-
-        if (!dir.exists()) {
-            throw new IllegalStateException("Python 폴더가 존재하지 않습니다: " + pythonDir);
-        }
-
-        File[] files = dir.listFiles((d, name) -> name.startsWith(filePrefix) && name.endsWith(".png"));
-
-        if (files == null || files.length == 0) {
-            throw new IllegalStateException("Python 폴더에 " + promotionType + " 이미지가 없습니다.");
-        }
-
-        // listFiles 는 순서를 보장하지 않는다. 파일명({type}_{시각}_{순번}.png) 순으로 정렬해야
-        // 호출부에서 프롬프트 순서와 짝이 맞는다.
-        java.util.Arrays.sort(files, java.util.Comparator.comparing(File::getName));
-        return files;
+        System.out.println("✅ [파일 복사 완료] " + files.size() + "개 파일이 React public으로 복사되었습니다.");
     }
 }

@@ -8,10 +8,12 @@ python.api.url=http://localhost:5000
 accai.base-url=http://localhost:5000
 
 # --- 파일 경로 (절대경로 또는 실행 위치 기준 상대경로) ---
-# 프론트 레포 루트 (하위 public/data/promotion/... 에 결과물 복사)
-react.base-path=../acc-front
-# AI 서버가 생성한 홍보물 폴더
-python.base-dir=../acc-ai/promotion
+# 생성물 저장 루트 (하위 public/data/promotion/...). 이름과 달리 프론트 레포가 아니어도 된다:
+# 브라우저는 /files/{토큰} 으로만 받으므로 vite public 에 둘 필요가 없다 (#27). AI 의 FRONT_PROJECT_ROOT 와 같은 폴더로
+react.base-path=../data/local
+# AI 전용 내부 파일 API 비밀값 (AI FILES_MODE=http 일 때만, 비우면 꺼짐)
+# internal.token=
+# AI 서버가 생성한 홍보물은 python.api.url 의 /internal/promotion 으로 받는다 (공유 폴더 불필요)
 files.generated-root=./data/promotion/
 # 기획서 업로드 저장 위치
 files.path=./data/proposal

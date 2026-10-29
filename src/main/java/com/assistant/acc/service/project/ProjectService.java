@@ -54,6 +54,13 @@ public interface ProjectService {
 
     RegionTrendResponseDTO analyzeRegionTrend(String m_no, String festivalStartDate);
 
+    /** 이미 만든 프로젝트(pNo)의 기획서 분석. 요청 정보(CurrentMember)를 쓰지 않아 백그라운드 작업에서 부를 수 있다 */
+    ProposalMetadata analyzeProposal(int pNo, byte[] file, String filename, String theme, String keywords, String title)
+            throws IOException;
+
+    /** 프로젝트(pNo)의 지역 트렌드. 실패하면 예외 (빈 결과를 성공처럼 돌려주지 않는다) */
+    RegionTrendResponseDTO analyzeRegionTrendFor(int pNo, String festivalStartDate);
+
 
 
 }
