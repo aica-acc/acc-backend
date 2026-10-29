@@ -44,36 +44,36 @@ class FileStorageServiceTest {
 
     @Test
     void 저장_AI에서_받고_원본을_지운다() throws Exception {
-        when(ai.download(eq("mascot"), eq("mascot_1_0.png"), any())).thenAnswer(inv -> {
-            Files.write(inv.getArgument(2, Path.class), new byte[] {9});
+        when(ai.download(eq("mascot"), eq("M1_7"), eq("mascot_1_0.png"), any())).thenAnswer(inv -> {
+            Files.write(inv.getArgument(3, Path.class), new byte[] {9});
             return true;
         });
 
-        service.saveGeneratedPosterImage("M1", 7, "mascot_1_0.png", 1, 2, "mascot");
+        service.saveGeneratedPosterImage("M1", 7, "mascot_1_0.png", 1, 2, "mascot", "M1_7");
 
         assertThat(dest("mascot_1_0.png")).exists();
-        verify(ai).delete("mascot", "mascot_1_0.png");
+        verify(ai).delete("mascot", "M1_7", "mascot_1_0.png");
         verify(assets).AssetInsert(any());
     }
 
     @Test
     void 저장_AI에_파일이_없으면_DB에_쓰지_않는다() {
-        when(ai.download(any(), any(), any())).thenReturn(false);
+        when(ai.download(any(), any(), any(), any())).thenReturn(false);
 
-        assertThatThrownBy(() -> service.saveGeneratedPosterImage("M1", 7, "x.png", 1, 2, "mascot"))
+        assertThatThrownBy(() -> service.saveGeneratedPosterImage("M1", 7, "x.png", 1, 2, "mascot", "M1_7"))
                 .isInstanceOf(IllegalStateException.class);
         verifyNoInteractions(assets);
     }
 
     @Test
     void 저장_원본_삭제_실패면_받은_파일도_지운다() {
-        when(ai.download(any(), any(), any())).thenAnswer(inv -> {
-            Files.write(inv.getArgument(2, Path.class), new byte[] {9});
+        when(ai.download(any(), any(), any(), any())).thenAnswer(inv -> {
+            Files.write(inv.getArgument(3, Path.class), new byte[] {9});
             return true;
         });
-        doThrow(new RuntimeException("ai down")).when(ai).delete(any(), any());
+        doThrow(new RuntimeException("ai down")).when(ai).delete(any(), any(), any());
 
-        assertThatThrownBy(() -> service.saveGeneratedPosterImage("M1", 7, "mascot_1_0.png", 1, 2, "mascot"))
+        assertThatThrownBy(() -> service.saveGeneratedPosterImage("M1", 7, "mascot_1_0.png", 1, 2, "mascot", "M1_7"))
                 .hasMessageContaining("롤백");
         assertThat(dest("mascot_1_0.png")).doesNotExist();
         verifyNoInteractions(assets);

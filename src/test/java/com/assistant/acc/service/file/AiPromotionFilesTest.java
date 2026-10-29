@@ -34,36 +34,36 @@ class AiPromotionFilesTest {
 
     @Test
     void list_타입_접두어로_조회() {
-        server.expect(requestTo("http://ai:5000/internal/promotion/mascot?prefix=mascot_&ext=.png"))
+        server.expect(requestTo("http://ai:5000/internal/promotion/mascot?prefix=mascot_&ext=.png&batch=M1_7"))
                 .andRespond(withSuccess("{\"files\":[\"mascot_1_0.png\",\"mascot_1_1.png\"]}", MediaType.APPLICATION_JSON));
 
-        assertThat(files.list("mascot")).containsExactly("mascot_1_0.png", "mascot_1_1.png");
+        assertThat(files.list("mascot", "M1_7")).containsExactly("mascot_1_0.png", "mascot_1_1.png");
         server.verify();
     }
 
     @Test
     void download_저장하고_없으면_false(@TempDir Path dir) throws Exception {
-        server.expect(requestTo("http://ai:5000/internal/promotion/poster/poster_1_0.png"))
+        server.expect(requestTo("http://ai:5000/internal/promotion/poster/M1_7/poster_1_0.png"))
                 .andRespond(withSuccess(new byte[] {1, 2, 3}, MediaType.IMAGE_PNG));
         server.expect(requestTo("http://ai:5000/internal/promotion/poster/none.png"))
                 .andRespond(withStatus(HttpStatus.NOT_FOUND));
 
         Path dest = dir.resolve("a.png");
-        assertThat(files.download("poster", "poster_1_0.png", dest)).isTrue();
+        assertThat(files.download("poster", "M1_7", "poster_1_0.png", dest)).isTrue();
         assertThat(Files.readAllBytes(dest)).containsExactly(1, 2, 3);
-        assertThat(files.download("poster", "none.png", dir.resolve("b.png"))).isFalse();
+        assertThat(files.download("poster", null, "none.png", dir.resolve("b.png"))).isFalse();
         server.verify();
     }
 
     @Test
     void delete_없으면_false() {
-        server.expect(requestTo("http://ai:5000/internal/promotion/mascot/mascot_1_0.png"))
+        server.expect(requestTo("http://ai:5000/internal/promotion/mascot/M1_7/mascot_1_0.png"))
                 .andExpect(method(HttpMethod.DELETE)).andRespond(withSuccess());
         server.expect(requestTo("http://ai:5000/internal/promotion/mascot/gone.png"))
                 .andExpect(method(HttpMethod.DELETE)).andRespond(withStatus(HttpStatus.NOT_FOUND));
 
-        assertThat(files.delete("mascot", "mascot_1_0.png")).isTrue();
-        assertThat(files.delete("mascot", "gone.png")).isFalse();
+        assertThat(files.delete("mascot", "M1_7", "mascot_1_0.png")).isTrue();
+        assertThat(files.delete("mascot", null, "gone.png")).isFalse();
         server.verify();
     }
 }

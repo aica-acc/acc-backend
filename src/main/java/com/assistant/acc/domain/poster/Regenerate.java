@@ -24,4 +24,6 @@ public class Regenerate {
     private String newFileName;
     private String newFilePath;
     private String newImageUrl;
+    /** AI 결과 폴더 키 (RegeneratePythonService 가 정한다) */
+    private String batch;
 }

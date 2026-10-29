@@ -28,13 +28,13 @@ public class FileStorageService {
     /**
      * AI 결과를 받아 dest 에 저장하고 AI 쪽 원본을 지운다 (이동). 지우기에 실패하면 받은 파일도 지운다.
      */
-    private void moveFromAi(String promotionType, String filename, File dest, String missingMessage) {
-        if (!aiFiles.download(promotionType, filename, dest.toPath())) {
+    private void moveFromAi(String promotionType, String batch, String filename, File dest, String missingMessage) {
+        if (!aiFiles.download(promotionType, batch, filename, dest.toPath())) {
             throw new IllegalStateException(missingMessage + promotionType + "/" + filename);
         }
         System.out.println("✅ 파일 복사 성공: " + dest.getAbsolutePath());
         try {
-            aiFiles.delete(promotionType, filename);
+            aiFiles.delete(promotionType, batch, filename);
         } catch (RuntimeException e) {
             // ⚠️ 롤백: 복사된 파일도 삭제하고 예외 던지기
             dest.delete();
@@ -49,7 +49,8 @@ public class FileStorageService {
             String filename,
             Integer promptNo,
             Integer promotionNo,
-            String promotionType) {
+            String promotionType,
+            String batch) {
         // ⭐ 1. React public 폴더의 저장 경로 정의
         String targetDir = Paths.get(
                 baseDir,
@@ -67,7 +68,7 @@ public class FileStorageService {
 
         // ⭐ 2. AI 결과 이동 (받기 + 원본 삭제, 실패 시 롤백)
         File dest = new File(Paths.get(targetDir, filename).toString());
-        moveFromAi(promotionType, filename, dest, "원본 이미지 파일이 존재하지 않습니다: ");
+        moveFromAi(promotionType, batch, filename, dest, "원본 이미지 파일이 존재하지 않습니다: ");
 
         // ⭐ 3. generated_asset DB 저장
         GeneratedAsset asset = GeneratedAsset.builder()
@@ -99,7 +100,8 @@ public class FileStorageService {
             Integer projectNo,
             String newFilename,
             String oldFilename,
-            String promotionType) {
+            String promotionType,
+            String batch) {
 
         String targetDir = Paths.get(
                 baseDir,
@@ -124,7 +126,7 @@ public class FileStorageService {
 
         /* ⭐ (2) AI 에서 새 파일 이동 + 롤백 */
         File dest = new File(targetDir + File.separator + newFilename);
-        moveFromAi(promotionType, newFilename, dest, "재생성된 이미지 파일이 존재하지 않습니다: ");
+        moveFromAi(promotionType, batch, newFilename, dest, "재생성된 이미지 파일이 존재하지 않습니다: ");
     }
 
     /**
@@ -169,10 +171,11 @@ public class FileStorageService {
      * AI 폴더에서 React public으로 파일만 복사 (DB 저장 없음)
      */
     public void copyExistingFilesToReact(String memberNo, Integer projectNo, String promotionType) {
-        List<String> files = aiFiles.list(promotionType);
+        String batch = AiPromotionFiles.batchOf(memberNo, projectNo);
+        List<String> files = aiFiles.list(promotionType, batch);
 
         if (files.isEmpty()) {
-            throw new IllegalStateException("AI 폴더에 파일이 없습니다: " + promotionType);
+            throw new IllegalStateException("AI 폴더에 파일이 없습니다: " + promotionType + "/" + batch);
         }
 
         System.out.println("🔄 [파일 복사 모드] AI → React public 복사 시작...");
@@ -190,39 +193,11 @@ public class FileStorageService {
 
         for (String filename : files) {
             System.out.println("  📋 파일 복사 시작: " + filename);
-            if (!aiFiles.download(promotionType, filename, Paths.get(targetDir, filename))) {
+            if (!aiFiles.download(promotionType, batch, filename, Paths.get(targetDir, filename))) {
                 System.out.println("  ⚠️ AI 파일 없음: " + promotionType + "/" + filename);
             }
         }
 
         System.out.println("✅ [파일 복사 완료] " + files.size() + "개 파일이 React public으로 복사되었습니다.");
-    }
-
-    /**
-     * AI 폴더에 이미 생성된 이미지가 있는지 확인
-     */
-    public boolean checkIfImagesExistInPythonFolder(String promotionType) {
-        List<String> files = aiFiles.list(promotionType);
-
-        if (files.size() >= 4) {
-            System.out.println("  📁 AI 폴더에 " + promotionType + " 이미지 " + files.size() + "개 발견");
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * AI 폴더의 파일명 목록. AI 가 파일명({type}_{시각}_{순번}.png) 순으로 정렬해 주므로
-     * 호출부에서 프롬프트 순서와 짝이 맞는다.
-     */
-    public List<String> getPythonFolderImages(String promotionType) {
-        List<String> files = aiFiles.list(promotionType);
-
-        if (files.isEmpty()) {
-            throw new IllegalStateException("AI 폴더에 " + promotionType + " 이미지가 없습니다.");
-        }
-
-        return files;
     }
 }

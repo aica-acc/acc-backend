@@ -14,6 +14,7 @@ import com.assistant.acc.domain.prompt.Prompt;
 import com.assistant.acc.mapper.project.ProjectMapper;
 import com.assistant.acc.mapper.project.promotion.GeneratedAssetMapper;
 import com.assistant.acc.mapper.prompt.PromptMapper;
+import com.assistant.acc.service.file.AiPromotionFiles;
 import com.assistant.acc.service.file.FileStorageService;
 import com.assistant.acc.service.member.UserInputsService;
 import com.assistant.acc.service.project.ProjectService;
@@ -219,12 +220,10 @@ public class PromotionAPIServiceImpl implements PromotionAPIService {
             }
         }
 
-        // ⭐ 2-2. Python 폴더 체크: 생성되었으나 저장 실패한 이미지 확인 (FileStorageService에 위임)
-        if (fileStorageService.checkIfImagesExistInPythonFolder(promotionType)) {
-            System.out.println(
-                    "⚠️ [Python 폴더 체크] " + promotionType + " 이미지가 Python 폴더에 존재합니다. Python 호출을 스킵하고 기존 이미지를 사용합니다.");
-            return processPythonExistingImages(memberNo, el, promotionType);
-        }
+        // ⭐ 2-2. 생성은 됐지만 저장에 실패했던 경우: 예전에는 AI 폴더 전체에서 4장을 찾아 재사용했는데
+        //        다른 프로젝트 결과가 섞일 수 있었다. 이제 AI 가 이 프로젝트 폴더(batch)에 이미 만든 장은
+        //        다시 만들지 않으므로 그냥 다시 요청한다 (#31)
+        String batch = AiPromotionFiles.batchOf(memberNo, el.getProjectNo());
 
         // 3. Prompt 조회 (타입별)
         List<Prompt> prompts = promptMapper.selectPromptsByType(
@@ -257,6 +256,7 @@ public class PromotionAPIServiceImpl implements PromotionAPIService {
         CreateImageRequestDto req = new CreateImageRequestDto();
         req.setAnalysisSummary(el.getProposalMetadata());
         req.setPromptOptions(selectedList);
+        req.setBatch(batch);
 
         // 7. FastAPI 호출 (타입별 엔드포인트)
         System.out.println("🚀 [Python 호출] " + promotionType + " 이미지 생성 시작...");
@@ -264,7 +264,12 @@ public class PromotionAPIServiceImpl implements PromotionAPIService {
                 ? "/create-mascot-image"
                 : "/create-image";
 
-        CreateImageResultResponse result = callPython(endPoint, req, CreateImageResultResponse.class);
+        CreateImageResultResponse result;
+        try {
+            result = callPython(endPoint, req, CreateImageResultResponse.class);
+        } catch (RuntimeException e) {
+            throw AiFailure.of(e, "mascot".equals(promotionType) ? "마스코트" : "포스터");
+        }
 
         if (result == null || result.getImages() == null) {
             throw new IllegalStateException("이미지 생성 실패 (FastAPI 응답 null)");
@@ -284,7 +289,8 @@ public class PromotionAPIServiceImpl implements PromotionAPIService {
                     filename,
                     promptNo,
                     promotionNo,
-                    promotionType);
+                    promotionType,
+                    batch);
         }
 
         return result;
@@ -315,54 +321,6 @@ public class PromotionAPIServiceImpl implements PromotionAPIService {
         CreateImageResultResponse response = new CreateImageResultResponse();
         response.setStatus("success");
         response.setImages(new ArrayList<>());
-        return response;
-    }
-
-    /**
-     * Python 폴더에 있는 이미지를 처리 (DB 저장 재시도)
-     * FileStorageService에서 파일 목록 가져오기
-     */
-    private CreateImageResultResponse processPythonExistingImages(
-            String memberNo,
-            GenerateElement el,
-            String promotionType) {
-
-        // FileStorageService에서 파일 목록 가져오기
-        List<String> files = fileStorageService.getPythonFolderImages(promotionType);
-
-        List<Prompt> prompts = promptMapper.selectPromptsByType(
-                el.getUserInputs().getUserInputNo(),
-                promotionType);
-
-        Integer promotionNo = promotionService.createPromotion(
-                el.getProjectNo(),
-                prompts.get(0).getPromptNo(),
-                promotionType);
-
-        List<CreateImageResponseDto> imageResults = new ArrayList<>();
-
-        for (int i = 0; i < Math.min(files.size(), prompts.size()); i++) {
-            String filename = files.get(i);
-            Integer promptNo = prompts.get(i).getPromptNo();
-
-            fileStorageService.saveGeneratedPosterImage(
-                    memberNo,
-                    el.getProjectNo(),
-                    filename,
-                    promptNo,
-                    promotionNo,
-                    promotionType);
-
-            CreateImageResponseDto dto = new CreateImageResponseDto();
-            dto.setFileName(filename);
-            dto.setImageUrl("/poster-images/" + filename);
-            imageResults.add(dto);
-        }
-
-        CreateImageResultResponse response = new CreateImageResultResponse();
-        response.setStatus("success");
-        response.setImages(imageResults);
-
         return response;
     }
 }

@@ -34,27 +34,46 @@ public class AiPromotionFiles {
     @Value("${python.api.url:http://localhost:5000}")
     private String pythonApiUrl;
 
+    /**
+     * 생성 요청 폴더 키 (회원_프로젝트). AI 는 결과를 {type}/{batch}/ 에 두므로 다른 회원·프로젝트의 결과와 섞이지 않는다 (#31)
+     */
+    public static String batchOf(String memberNo, Integer projectNo) {
+        return memberNo + "_" + projectNo;
+    }
+
     private UriComponentsBuilder base(String type) {
         return UriComponentsBuilder.fromUriString(pythonApiUrl.replaceAll("/+$", ""))
                 .pathSegment("internal", "promotion", type);
     }
 
-    private URI uri(String type, String filename) {
-        return base(type).pathSegment(filename).build().encode().toUri();
+    private URI uri(String type, String batch, String filename) {
+        UriComponentsBuilder b = base(type);
+        if (batch != null) {
+            b.pathSegment(batch);
+        }
+        return b.pathSegment(filename).build().encode().toUri();
     }
 
-    /** {type}_ 로 시작하는 .png 목록, 파일명 순 */
-    public List<String> list(String type) {
-        URI u = base(type).queryParam("prefix", type + "_").queryParam("ext", ".png").build().encode().toUri();
+    private URI uri(String type, String filename) {
+        return uri(type, null, filename);
+    }
+
+    /** 요청 폴더의 {type}_ 로 시작하는 .png 목록, 파일명 순 */
+    public List<String> list(String type, String batch) {
+        UriComponentsBuilder b = base(type).queryParam("prefix", type + "_").queryParam("ext", ".png");
+        if (batch != null) {
+            b.queryParam("batch", batch);
+        }
+        URI u = b.build().encode().toUri();
         @SuppressWarnings("unchecked")
         Map<String, List<String>> body = restTemplate.getForObject(u, Map.class);
         return body == null || body.get("files") == null ? List.of() : body.get("files");
     }
 
     /** 받아서 dest 에 저장. AI 에 없으면 false */
-    public boolean download(String type, String filename, Path dest) {
+    public boolean download(String type, String batch, String filename, Path dest) {
         try {
-            return Boolean.TRUE.equals(restTemplate.execute(uri(type, filename), HttpMethod.GET, null, res -> {
+            return Boolean.TRUE.equals(restTemplate.execute(uri(type, batch, filename), HttpMethod.GET, null, res -> {
                 Files.copy(res.getBody(), dest, StandardCopyOption.REPLACE_EXISTING);
                 return true;
             }));
@@ -76,9 +95,9 @@ public class AiPromotionFiles {
     }
 
     /** 다 옮긴 원본을 지운다. 없으면 false */
-    public boolean delete(String type, String filename) {
+    public boolean delete(String type, String batch, String filename) {
         try {
-            restTemplate.delete(uri(type, filename));
+            restTemplate.delete(uri(type, batch, filename));
             return true;
         } catch (HttpClientErrorException.NotFound e) {
             return false;
