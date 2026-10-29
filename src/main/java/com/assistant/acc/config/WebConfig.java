@@ -45,7 +45,8 @@ public class WebConfig implements WebMvcConfigurer {
             "/api/auth/login",
             "/api/auth/test-login",
             "/api/auth/oauth/**",
-            "/files/**"   // 브라우저용 파일 주소 (<img src> 라 토큰 없이. 주소 자체가 추측 불가)
+            "/files/**",   // 브라우저용 파일 주소 (<img src> 라 토큰 없이. 주소 자체가 추측 불가)
+            "/internal/**" // AI 서버 전용. 로그인 대신 INTERNAL_TOKEN 을 확인한다 (InternalFileController). nginx 는 중계하지 않음
     };
 
     @Bean

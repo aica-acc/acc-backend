@@ -64,7 +64,8 @@ java -jar target/acc-0.0.1-SNAPSHOT.jar
 | `spring.datasource.url` / `username` / `password` | MySQL 접속 정보 | `jdbc:mysql://localhost:3306/acc_database?...` |
 | `python.api.url` | AI 서버 주소 (API 호출과 `/static/**` 중계에 사용) | `http://localhost:5000` |
 | `accai.base-url` | 배너 트렌드용 AI 서버 주소 | `http://localhost:5000` |
-| `react.base-path` | 프론트 레포 루트. 하위 `public/data/promotion/...` 에 결과물을 복사 | `../acc-front` |
+| `react.base-path` | 생성물 저장 루트. 하위 `public/data/promotion/...` 에 저장 (브라우저는 `/files/` 로만 받으므로 프론트 레포일 필요 없음) | `../data/local` |
+| `internal.token` | AI 전용 `/internal/files` 비밀값 (AI `FILES_MODE=http` 일 때). 비우면 꺼짐 | (빈 값) |
 | `python.base-dir` | AI 서버가 홍보물을 생성하는 폴더 | `../acc-ai/promotion` |
 | `files.generated-root` | 생성물 루트 | `./data/promotion/` |
 | `files.path` | 기획서 업로드 저장 폴더 | `./data/proposal` |
