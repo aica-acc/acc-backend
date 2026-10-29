@@ -30,7 +30,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
-import java.io.File;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -329,7 +328,7 @@ public class PromotionAPIServiceImpl implements PromotionAPIService {
             String promotionType) {
 
         // FileStorageService에서 파일 목록 가져오기
-        File[] files = fileStorageService.getPythonFolderImages(promotionType);
+        List<String> files = fileStorageService.getPythonFolderImages(promotionType);
 
         List<Prompt> prompts = promptMapper.selectPromptsByType(
                 el.getUserInputs().getUserInputNo(),
@@ -342,8 +341,8 @@ public class PromotionAPIServiceImpl implements PromotionAPIService {
 
         List<CreateImageResponseDto> imageResults = new ArrayList<>();
 
-        for (int i = 0; i < Math.min(files.length, prompts.size()); i++) {
-            String filename = files[i].getName();
+        for (int i = 0; i < Math.min(files.size(), prompts.size()); i++) {
+            String filename = files.get(i);
             Integer promptNo = prompts.get(i).getPromptNo();
 
             fileStorageService.saveGeneratedPosterImage(
